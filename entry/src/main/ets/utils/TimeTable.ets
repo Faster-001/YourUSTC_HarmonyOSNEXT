@@ -192,6 +192,7 @@ class scheduleManager {
   formattedSchedule: classAttribute[][][] = [[[]]]; // 第一层：周数；第二层：星期几；第三层：这一天的所有课，在Schedule.ets中会按优先级排序
   currentTime: Date = new Date();
   today: number = 0; // 星期几-1
+  isTermBegin: boolean = true;
   isTermEnd: boolean = false;
   showColorHint: boolean = UnifiedPreferences.getBoolSync('ShowColorHint', true);
 
@@ -199,13 +200,19 @@ class scheduleManager {
     this.parsedSchedule = JSON.parse(UnifiedPreferences.getSync(SCHEDULE_KEY, '[[[]]]')) as classAttribute[][][];
     if (UnifiedPreferences.hasSync(START_TIME_KEY)) {
       this.weekDisplayed = Math.ceil((this.currentTime.getTime() - Number(UnifiedPreferences.getSync(START_TIME_KEY))) / millisecondsPerWeek);
-      if (this.weekDisplayed > 20 || this.weekDisplayed <= 0) {
+      if (this.weekDisplayed > 20) { // 学期已结束
         this.weekDisplayed = 1;
+        this.isTermBegin = true;
         this.isTermEnd = true;
+      }
+      if (this.weekDisplayed <= 0) { // 学期未开始
+        this.weekDisplayed = 1;
+        this.isTermBegin = false;
+        this.isTermEnd = false;
       }
       this.weekStart = Number(UnifiedPreferences.getSync(START_TIME_KEY)) + (this.weekDisplayed - 1) * millisecondsPerWeek;
       this.termStart = Number(UnifiedPreferences.getSync(START_TIME_KEY));
-    } else {
+    } else { // 没有保存学期开始时间时，以上一个星期日为学期开始时间
       this.weekDisplayed = 1;
       const monday = new Date(this.currentTime);
       monday.setDate(this.currentTime.getDate() + (this.currentTime.getDay() === 0 ? 1 : - (this.currentTime.getDay() - 1)));
@@ -213,6 +220,7 @@ class scheduleManager {
       this.weekStart = monday.getTime() - 86400000;
       UnifiedPreferences.putSync(START_TIME_KEY, this.weekStart);
       this.termStart = this.weekStart;
+      this.isTermBegin = true;
       this.isTermEnd = false;
     }
     this.today = (this.currentTime.getDay() + 6) % 7;
@@ -246,22 +254,27 @@ class scheduleManager {
               }
 
       UnifiedPreferences.putSync(SCHEDULE_KEY, JSON.stringify(this.parsedSchedule));
+      UnifiedPreferences.putSync('ScheduleVersion', '1.0.0');
       this.weekDisplayed = Math.ceil((this.currentTime.getTime() - this.termStart) / millisecondsPerWeek);
       if (this.weekDisplayed > 20) { // 学期已结束
         this.weekDisplayed = 1;
-        if (this.termStart == 0 ) { // 如果没有学期开始信息（即手动添加第一门课），将上一个周日作为一周开始
+        if (this.termStart == 0 ) { // 如果没有学期开始信息（默认是0）（即手动添加第一门课），将上一个周日作为一周开始
           const monday = new Date(this.currentTime);
           monday.setDate(this.currentTime.getDate() + (this.currentTime.getDay() === 0 ? 1 : -(this.currentTime.getDay() - 1)));
           monday.setHours(0, 0, 0, 0);
           UnifiedPreferences.putSync(START_TIME_KEY, monday.getTime() - 86400000);
+          this.isTermBegin = true;
           this.isTermEnd = false;
         } else { // 如果有，说明学期结束
           UnifiedPreferences.putSync(START_TIME_KEY, this.termStart);
+          this.isTermBegin = true;
           this.isTermEnd = true;
         }
-      } else { // 否则说明学期未结束
-        if (this.weekDisplayed <= 0) // 学期未开始
+      } else { // 学期未结束
+        if (this.weekDisplayed <= 0) { // 学期未开始
           this.weekDisplayed = 1;
+          this.isTermBegin = true;
+        }
         UnifiedPreferences.putSync(START_TIME_KEY, this.termStart);
         this.isTermEnd = false;
       }

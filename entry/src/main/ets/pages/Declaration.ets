@@ -8,6 +8,7 @@ struct Declaration {
   @State agreePolitic: boolean = false;
   @State chooseSchool: number = -1;
   @State showSheet: boolean = false;
+  @State knowIndependence: boolean = false;
   private webController: webview.WebviewController = new webview.WebviewController();
 
   onBackPress(): boolean {
@@ -16,6 +17,7 @@ struct Declaration {
 
   build() {
     Stepper() {
+      // 同意用户协议和隐私政策
       StepperItem() {
         Column() {
           Column({ space: 7 }) {
@@ -60,6 +62,35 @@ struct Declaration {
 
       StepperItem() {
         Column({ space: 7 }) {
+          Text($r('app.string.no_association1'))
+            .fontSize(24)
+            .fontWeight(FontWeight.Bolder)
+          Scroll() {
+            Text($r('app.string.no_association2'))
+              .fontColor($r('app.color.red'))
+          }
+          Text($r('app.string.no_association3'))
+            .copyOption(CopyOptions.InApp)
+          TextArea()
+            .maxLines(4)
+            .onChange((value: string) => {
+              if (value === '我已知晓并承认“妮可之记”由中科大学生独立开发，与华中科技大学和中国科学技术大学官方无任何关联') {
+                this.knowIndependence = true;
+              }
+            })
+          Text($r('app.string.no_association4'))
+            .fontColor($r('app.color.green'))
+            .visibility(this.knowIndependence ? Visibility.Visible : Visibility.Hidden)
+        }
+        .justifyContent(FlexAlign.Center)
+        .padding(15)
+        .height('90%')
+        .width('90%')
+      }
+      .status(this.knowIndependence ? ItemState.Normal : ItemState.Disabled)
+
+      StepperItem() {
+        Column({ space: 7 }) {
           Text($r('app.string.choose_school'))
             .fontSize(24)
             .fontWeight(FontWeight.Bolder)
@@ -72,7 +103,6 @@ struct Declaration {
             .fontColor($r('app.color.transparent_text'))
         }
         .justifyContent(FlexAlign.Center)
-        .borderRadius(20)
         .padding(15)
         .height('90%')
         .width('90%')
@@ -83,13 +113,13 @@ struct Declaration {
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     .onFinish(() => {
       switch (this.chooseSchool) {
-        case 1:
-          UnifiedPreferences.putSync('school', 'USTC');
-          setUSTCLink();
-          break;
         case 0:
           UnifiedPreferences.putSync('school', 'HUST');
           setHUSTLink();
+          break;
+        case 1:
+          UnifiedPreferences.putSync('school', 'USTC');
+          setUSTCLink();
           break;
       }
       UnifiedPreferences.putSync('InitialLaunch', false);

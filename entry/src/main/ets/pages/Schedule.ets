@@ -620,17 +620,6 @@ struct Schedule {
 
           Blank()
 
-          Text('xiu~')
-            .visibility(this.weekDisplayed === scheduleManager.weekDisplayed ? Visibility.Hidden : Visibility.Visible)
-            .onClick(() => {
-              this.weekDisplayed = scheduleManager.weekDisplayed;
-              this.weekStart = scheduleManager.weekStart;
-              this.weekEnd = scheduleManager.weekEnd;
-              this.sepConflictClass();
-            })
-
-          Blank()
-
           Image(this.weekDisplayed == 1 ? $r('app.media.arrow_left_circle_unavailable') :
             $r('app.media.arrow_left_circle'))
             .height(18)
@@ -677,7 +666,7 @@ struct Schedule {
 
         // 星期几
         Row() {
-          Text($r('app.string.class_span'))
+          Text(this.weekDisplayed === scheduleManager.weekDisplayed ? $r('app.string.class_span') : $r('app.string.back_to_current_week'))
             .fontWeight(FontWeight.Bold)
             .fontSize(12)
             .height('100%')
@@ -686,6 +675,14 @@ struct Schedule {
             .border({
               width: { right: 1 },
               color: $r('app.color.grid_border')
+            })
+            .onClick(() => {
+              if (this.weekDisplayed !== scheduleManager.weekDisplayed) {
+                this.weekDisplayed = scheduleManager.weekDisplayed;
+                this.weekStart = scheduleManager.weekStart;
+                this.weekEnd = scheduleManager.weekEnd;
+                this.sepConflictClass();
+              }
             })
           Text(tools.weekTranslate[6])
             .fontWeight(FontWeight.Bold)

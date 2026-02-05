@@ -354,7 +354,7 @@ struct Index {
   refreshInfo() {
     this.currentTime = new Date();
     scheduleManager.getFormattedSchedule(); // 初始化首页课表
-    if (scheduleManager.isTermEnd) {
+    if (scheduleManager.isTermEnd || !scheduleManager.isTermBegin) {
       this.todayCourse = [];
       this.tomorrowCourse = [];
     } else {
@@ -506,11 +506,29 @@ struct Index {
             Divider();
             if (this.todayCourse.length === 0) {
               Column() {
-                Image($r('app.media.no_course_today'))
-                  .height(75)
-                  .interpolation(ImageInterpolation.Medium)
-                  .draggable(false)
-                Text(scheduleManager.isTermEnd ? $r('app.string.no_class_term_end') : $r('app.string.no_class_today'));
+                if (scheduleManager.isTermBegin) {
+                  if (scheduleManager.isTermEnd) {
+                    Image($r('app.media.no_course_term_end'))
+                      .height(75)
+                      .interpolation(ImageInterpolation.Medium)
+                      .draggable(false);
+                    Text($r('app.string.no_class_term_end'))
+                      .textAlign(TextAlign.Center);
+                  } else {
+                    Image($r('app.media.no_course_today'))
+                      .height(75)
+                      .interpolation(ImageInterpolation.Medium)
+                      .draggable(false);
+                    Text($r('app.string.no_class_today'))
+                      .textAlign(TextAlign.Center);}
+                } else {
+                  Image($r('app.media.no_course_term_not_start'))
+                    .height(75)
+                    .interpolation(ImageInterpolation.Medium)
+                    .draggable(false);
+                  Text($r('app.string.no_class_term_not_start'))
+                    .textAlign(TextAlign.Center);
+                }
               }
               .margin({ top: 12, bottom: 12 });
             } else {
@@ -518,6 +536,20 @@ struct Index {
                 if (this.currentTime.getTime() < scheduleManager.weekStart + (scheduleManager.today + 1) % 7 * 86400000
                   + ScheduleSources.commonClassStamp[course.timeSpan[course.timeSpan.length - 1]][1] + 1800000) {
                   Row() {
+                    Column() {
+                      Line()
+                        .stroke((course.color.length === 9) ? `#${course.color.slice(3)}` : ((course.color.length === 5) ? `#${course.color.slice(2)}` : course.color))
+                        .width(6)
+                        .height(20)
+                        .strokeLineCap(LineCapStyle.Round)
+                        .strokeWidth(6)
+                        .startPoint([3, 0])
+                        .endPoint([3, 20])
+                        .margin({ right: 4 });
+                    }
+                    .alignItems(HorizontalAlign.End)
+                    .width('5%')
+
                     Column() {
                       Text(course.name)
                         .textAlign(TextAlign.Start)
@@ -527,7 +559,7 @@ struct Index {
                         .textOverflow({ overflow: TextOverflow.Ellipsis });
 
                       if (this.currentTime.getTime() < scheduleManager.weekStart + (scheduleManager.today + 1) % 7 * 86400000
-                          + ScheduleSources.commonClassStamp[course.timeSpan[0]][0] &&
+                        + ScheduleSources.commonClassStamp[course.timeSpan[0]][0] &&
                         this.currentTime.getTime() > scheduleManager.weekStart + (scheduleManager.today + 1) % 7 * 86400000
                           + ScheduleSources.commonClassStamp[course.timeSpan[0]][0] - 1800000) {
                         Text($r('app.string.class_soon'))
@@ -549,7 +581,7 @@ struct Index {
                           .fontColor($r('app.color.green'));
                       }
                     }
-                    .width('50%')
+                    .width('45%')
                     .alignItems(HorizontalAlign.Start)
                     .padding({ right: 10 });
 
@@ -568,10 +600,11 @@ struct Index {
                         .maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis })
                     }
-                    .width('50%')
+                    .width('45%')
                     .alignItems(HorizontalAlign.Start);
                   }
-                  .width('90%')
+                  .width('100%')
+                  .justifyContent(FlexAlign.Start)
                   .margin({ top: 7, bottom: 7 });
 
                   if (index < this.todayCourse.length - 1) {
