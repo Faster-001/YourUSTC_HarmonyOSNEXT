@@ -157,6 +157,21 @@ if (!isRemoved || true) {
 }
 `
 
+
+export const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+export async function pollUntilLoad(callback: () => Promise<string>, intervalMs: number = 1000, maxAttempts: number = 30): Promise<string> {
+  let result: string = 'null';
+  while (result === 'null' && maxAttempts > 0) {
+    result = await callback();
+    maxAttempts--;
+    if (result === 'null' && maxAttempts > 0) {
+      await delay(intervalMs);
+    }
+  }
+  return result;
+}
+
 /**
  * 比较两个 classAttribute 对象是否完全相同
  * @param a 第一个对象

@@ -270,6 +270,7 @@ struct Schedule {
           Image($r('app.media.questionmark_circle'))
             .height(24)
             .width(24)
+            .draggable(false)
         }
         .width(42)
         .height(42)
@@ -283,6 +284,7 @@ struct Schedule {
           Image($r('app.media.close'))
             .height(24)
             .width(24)
+            .draggable(false)
         }
         .width(42)
         .height(42)
@@ -298,6 +300,7 @@ struct Schedule {
             Column() {
               Image($r('app.media.no_conflict_class'))
                 .height(120)
+                .draggable(false)
               Text($r('app.string.no_conflict_class'))
                 .fontSize(18)
             }
@@ -713,7 +716,7 @@ struct Schedule {
       .width('100%')
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
       .backgroundBlurStyle(BackgroundImage.blurLevel)
-      .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.normal_background') : undefined)
+      .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
       .opacity(BackgroundImage.opacityLevel)
 
       /**
@@ -820,7 +823,7 @@ struct Schedule {
         .columnStart(0)
         .columnEnd(0)
         .backgroundBlurStyle(BackgroundImage.blurLevel)
-        .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.normal_background') : undefined)
+        .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
         .opacity(BackgroundImage.opacityLevel)
 
         /**

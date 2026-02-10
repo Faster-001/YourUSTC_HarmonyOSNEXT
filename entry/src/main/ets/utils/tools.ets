@@ -199,3 +199,32 @@ export function formatTimeDiff(start: number, end: number, type: number): number
   }
   return 0;
 }
+
+/**
+ * 直接修改原升序无重复数字数组，插入指定数后保持升序且无重复
+ * @param sortedArr 已升序排序、无重复的数字原数组（会被直接修改）
+ * @param num 待插入的数字
+ */
+function insertIntoSortedArray(sortedArr: number[], num: number): void {
+  if (sortedArr.includes(num)) {
+    return;
+  }
+
+  // 二分查找核心逻辑：找第一个大于num的元素索引
+  let left = 0;
+  let right = sortedArr.length - 1;
+  let insertIndex = sortedArr.length; // 默认插尾部
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    if (sortedArr[mid] > num) {
+      insertIndex = mid; // 记录可能的插入位置，继续向左找
+      right = mid - 1;
+    } else {
+      left = mid + 1; // 继续向右找
+    }
+  }
+
+  // 直接修改原数组
+  sortedArr.splice(insertIndex, 0, num);
+}

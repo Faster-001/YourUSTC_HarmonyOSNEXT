@@ -578,7 +578,7 @@
     },
     {
       "name": "ended",
-      "value": "考试已结束"
+      "value": "已结束"
     },
     {
       "name": "not_newest",
@@ -602,7 +602,11 @@
     },
     {
       "name": "welcome_to_your_ustc",
-      "value": "\uD83D\uDC4B欢迎来到「妮可之记」！\uD83D\uDC4B"
+      "value": "\uD83D\uDC4B欢迎来到「妮可之记」!\uD83D\uDC4B"
+    },
+    {
+      "name": "version",
+      "value": "版本 1.0.0"
     },
     {
       "name": "EntryFormAbility_label",
@@ -722,7 +726,7 @@
     },
     {
       "name": "github",
-      "value": "在 GitHub 上为我们点亮\uD83C\uDF1F！"
+      "value": "在 GitHub 上为我们点亮\uD83C\uDF1F"
     },
     {
       "name": "about_to_open_github",
@@ -741,8 +745,32 @@
       "value": "用户协议 & 隐私政策"
     },
     {
+      "name": "homepage_website",
+      "value": "项目主页"
+    },
+    {
+      "name": "join_qq_group",
+      "value": "加入QQ交流群"
+    },
+    {
+      "name": "beian_query",
+      "value": "备案查询"
+    },
+    {
+      "name": "developer_list",
+      "value": "开发者\n25-微-祝一铭\n25-少-杜思成\n25-计-李铭承"
+    },
+    {
+      "name": "special_thanks",
+      "value": "特别鸣谢\n21-少物-孙旭磊"
+    },
+    {
       "name": "credits",
-      "value": "开发者 (按拼音排序) :\n25-少-杜思成 25-计-李铭承 25-微-祝一铭\n\n启动图片来源：pid 101123644\nQ版角色创意/绘制：祝一铭 & Gemini\n\n本项目起源于“计算机程序设计”大作业"
+      "value": "启动图片来源：PID 101123644\nQ版角色创意/绘制：祝一铭 & Gemini\n\n本项目起源于“计算机程序设计”大作业"
+    },
+    {
+      "name": "beian_info",
+      "value": "浙ICP备2022018221号-4A"
     },
     {
       "name": "copy_success",

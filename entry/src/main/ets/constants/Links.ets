@@ -42,7 +42,7 @@ export function setUSTCLink() {
     .set("0.13", { title: $r('app.string.PingKeSheQu'), url: 'https://icourse.club' })
     .set("0.14", { title: $r('app.string.WolframAlpha'), url: 'https://wolframalpha.com' })
     .set("0.15", { title: $r('app.string.WoKeXueShe'), url: 'https://ot.ustc.edu.cn/' })
-    .set("0.16", { title: $r('app.string.KeChengZiLiao'), url: 'https://share.feixu.site' })
+    .set("0.16", { title: $r('app.string.KeChengZiLiao'), url: $rawfile('CourseResource.html') })
 
     // 服务与工具
     .set("1.0", { title: $r('app.string.ZhiHuiMenHu'), url: 'http://i.ustc.edu.cn' })
