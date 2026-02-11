@@ -17,7 +17,7 @@
 
 ### 中国科大一站式导航 · 开启你的智慧校园
 
-###### [用户协议 & 隐私政策](https://cdn.jsdelivr.net/gh/Your-USTC/YourUSTC_HarmonyOSNEXT@main/entry/src/main/resources/rawfile/TermsOfUse.html)
+###### [App 主页](https://dailynic.feixu.site/) | [AppGallery](https://appgallery.huawei.com/app/detail?id=com.nic.dailynic) | [用户协议 & 隐私政策](https://cdn.jsdelivr.net/gh/Your-USTC/YourUSTC_HarmonyOSNEXT@main/entry/src/main/resources/rawfile/TermsOfUse.html)
 
 </div>
 
@@ -64,11 +64,12 @@
 1. 注册一个华为[开发者账号](https://developer.huawei.com/consumer/cn/)，如果仅运行在自己的设备上则无需实名认证
 2. 下载 [DevEco Studio 6.0.0](https://developer.huawei.com/consumer/cn/deveco-studio/)
 3. Fork 本仓库并将 Fork 后你自己的仓库下载到本地
-4. 将 `build-profile.json5.bak` 重命名为 `build-profile.json5`
-5. （可选）修改相应 链接/图标 和 课表/考试 提取函数
-6. 在手机/平板的系统设置中，打开“xxx的xxx”（例如：user的Mate 70 Pro+），连续点击“软件版本”7次，启用“开发者选项”（需要输入密码并重启）
-7. 转到 设置→系统→开发者选项→打开“USB调试”
-8. 在 DevEco Studio 中打开项目，将手机/平板连接到电脑并信任你的电脑，然后点击标题栏中的绿色三角形，即可安装到你的手机/平板上。需要登录华为账号并在右上角<image src="resources/signature.png" style="vertical-align: top; height: 1.2em;"/>处签名
+4. 将 `build-profile.json5.bak` 重命名为 `build-profile.json5` 并配置签名
+5. 将 `entry/src/main/ets/utils/Encryption.ets.bak` 重命名为 `Encryption.ets` 并配置 RSA 密钥
+6. （可选）修改相应 链接/图标 和 课表/考试 提取函数
+7. 在手机/平板的系统设置中，打开“xxx的xxx”（例如：user的Mate 70 Pro+），连续点击“软件版本”7次，启用“开发者选项”（需要输入密码并重启）
+8. 转到 设置→系统→开发者选项→打开“USB调试”
+9. 在 DevEco Studio 中打开项目，将手机/平板连接到电脑并信任你的电脑，然后点击标题栏中的绿色三角形，即可安装到你的手机/平板上。需要登录华为账号并在右上角<image src="resources/signature.png" style="vertical-align: top; height: 1.2em;"/>处签名
 
 ### 项目结构
 
