@@ -395,7 +395,26 @@ struct Index {
    */
   @Builder
   pageStart() {
-    List({ space: 10 }) {
+    List() {
+
+      // 标题
+      ListItem() {
+        Row() {
+          Text($r('app.string.app_name'))
+            .fontSize('20fp')
+            .height('30vp')
+            .fontWeight(FontWeight.Bold)
+            .padding({ left: 8, right: 8})
+            .borderRadius(12)
+            .backgroundBlurStyle(BackgroundImage.blurLevel)
+            .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.normal_background') : undefined)
+        }
+        .padding({ left: 4 })
+        .width('100%')
+        .justifyContent(FlexAlign.Start)
+      }
+      .width('100%')
+
       // 每日签到
       if (this.showCheckIn) {
         ListItem() {
@@ -455,6 +474,7 @@ struct Index {
         }
         .width('100%')
         .borderRadius(20)
+        .margin({ top: 8, bottom: 7 })
         .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
         .backgroundBlurStyle(BackgroundImage.blurLevel);
       }
@@ -680,7 +700,7 @@ struct Index {
       }
       .width('100%')
       .borderRadius(20)
-      .margin({ top: 5 })
+      .margin({ top: 8 })
       .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
       .backgroundBlurStyle(BackgroundImage.blurLevel);
 
@@ -816,22 +836,26 @@ struct Index {
       }
       .width('100%')
       .borderRadius(20)
-      .margin({ top: 5 })
+      .margin({ top: 15 })
       .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
       .backgroundBlurStyle(BackgroundImage.blurLevel);
 
       ListItem() {
-        Text($r('app.string.not_newest'))
-          .fontColor($r('app.color.transparent_text'))
-          .fontSize(12)
+        Row() {
+          Text($r('app.string.not_newest'))
+            .fontColor($r('app.color.transparent_text'))
+            .fontSize(12)
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.Center)
       }
-      .margin({ bottom: 13 })
+      .margin({ top: 10, bottom: 40 })
     }
     .width('100%')
     .height('100%')
     .scrollBar(BarState.Auto)
     .padding({ left: 12, right: 12 })
-    .margin({ top: 8 })
+    .margin({ top: 16 })
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
   }
 
