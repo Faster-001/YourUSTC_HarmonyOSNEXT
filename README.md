@@ -151,4 +151,4 @@ entry/src/main/
 
 [<image src="https://gnu.ac.cn/graphics/gplv3-or-later.svg" height="18"/> **GNU General Public License v3.0 (GPLv3)**](LICENSE)
 
-YourUSTC  Copyright © 2025  YourUSTC Developer Team
+DailyNic  Copyright © 2025  YourUSTC Developer Team
