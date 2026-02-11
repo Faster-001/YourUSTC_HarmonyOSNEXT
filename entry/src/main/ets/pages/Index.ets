@@ -1,6 +1,6 @@
 
 import { application, common, contextConstant, Want } from '@kit.AbilityKit'
-import { LengthUnit, mediaquery, window } from '@kit.ArkUI'
+import { LengthUnit } from '@kit.ArkUI'
 import { BusinessError } from '@kit.BasicServicesKit'
 import { fileIo } from '@kit.CoreFileKit'
 
@@ -24,6 +24,7 @@ import PasswordDialog from '../view/PasswordDialog'
 import ItemData from '../view/SettingsComponent'
 
 import { setUSTCLink, setHUSTLink } from '../constants/Links'
+import display from '@ohos.display'
 
 // 滚动条参数
 enum ScrollPosition {
@@ -32,57 +33,11 @@ enum ScrollPosition {
   end = 2
 }
 
-interface Rect {
-  width: number,
-  height: number
-}
-
 // 主界面UI
 @Entry
 @Component
 struct Index {
-  /*
-   * 以下是监听屏幕旋转
-   */
-  @State tabWidth: string = '100%';
-  @State tabHeight: string = 'auto';
-  @State tabHorizontal: boolean = false;
-  private windowRect: Rect = { width: 1840, height: 2800 };
-  portraitListener: mediaquery.MediaQueryListener = this.getUIContext().getMediaQuery().matchMediaSync('(orientation: landscape)');
-  onPortrait(mediaQueryResult: mediaquery.MediaQueryResult) {
-    let windowClass: window.Window | undefined = undefined;
-    try {
-      let promise = window.getLastWindow(this.context);
-      promise.then((data)=> {
-        //Get window object
-        windowClass = data;
-        try {
-          //Get window properties
-          let properties = windowClass.getWindowProperties();
-          this.windowRect.width = properties.windowRect.width;
-          this.windowRect.height = properties.windowRect.height;
-          if (this.windowRect.width > this.windowRect.height) { // 横屏
-            this.tabWidth = '52vp';
-            this.tabHeight = '100%';
-            this.tabHorizontal = true;
-          } else { // 竖屏
-            this.tabWidth = '100%';
-            this.tabHeight = 'auto';
-            this.tabHorizontal = false;
-          }
-        } catch (exception) {
-          console.error('Failed to obtain the window properties. Cause: ' + JSON.stringify(exception));
-        }
-        console.info('Succeeded in obtaining the top window. Data: ' + JSON.stringify(data));
-      }).catch((err: BusinessError)=>{
-        console.error('Failed to obtain the top window. Cause: ' + JSON.stringify(err));
-      });} catch (exception) {
-      console.error('Failed to obtain the top window. Cause: ' + JSON.stringify(exception));
-    }
-  }
-  /*
-   * 以上是监听屏幕旋转
-   */
+  private windowRect: display.Display = display.getDefaultDisplaySync();
 
   @State currentIndex: number = 0; // 当前标签索引 (从0开始), 初始值即为默认标签索引
   private tabsController: TabsController = new TabsController();
@@ -174,19 +129,11 @@ struct Index {
     WriteCalendar.initializeCalendar(this.getUIContext());
     //初始化背景
     BackgroundImage.init(this.context);
-    // 开启监听屏幕旋转
-    this.portraitListener.on('change', (mediaQueryResult: mediaquery.MediaQueryResult) => {
-      this.onPortrait(mediaQueryResult)
-    });
     // 首次启动提示
     if (UnifiedPreferences.getBoolSync('InitialLaunch', true)) {
       this.getUIContext().getRouter().pushUrl({ url: 'pages/Declaration' })
         .catch((err: Error) => { console.error(`Router ERROR: [${err.name}] ${err.message}`) })
     }
-  }
-
-  aboutToDisappear(): void {
-    this.portraitListener.off('change'); // 关闭监听屏幕旋转，防止内存泄露
   }
 
   /**
@@ -395,26 +342,7 @@ struct Index {
    */
   @Builder
   pageStart() {
-    List() {
-
-      // 标题
-      ListItem() {
-        Row() {
-          Text($r('app.string.app_name'))
-            .fontSize('20fp')
-            .height('30vp')
-            .fontWeight(FontWeight.Bold)
-            .padding({ left: 8, right: 8})
-            .borderRadius(12)
-            .backgroundBlurStyle(BackgroundImage.blurLevel)
-            .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.normal_background') : undefined)
-        }
-        .padding({ left: 4 })
-        .width('100%')
-        .justifyContent(FlexAlign.Start)
-      }
-      .width('100%')
-
+    List({ space: 10 }) {
       // 每日签到
       if (this.showCheckIn) {
         ListItem() {
@@ -451,6 +379,12 @@ struct Index {
                   this.checkInConsecutive = GeneratedDestructArray_1[1]
                   this.checkInContent = GeneratedDestructArray_1[2]
                 })
+
+              Button("测试页面")
+                .onClick(() => {
+                  this.getUIContext().getRouter().pushUrl({ url: 'pages/test' })
+                    .catch((err: Error) => { console.error(`Router ERROR: [${err.name}] ${err.message}`) });
+                })
             }
             .width('90%')
             .margin({ bottom: 10 })
@@ -474,7 +408,6 @@ struct Index {
         }
         .width('100%')
         .borderRadius(20)
-        .margin({ top: 8, bottom: 7 })
         .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
         .backgroundBlurStyle(BackgroundImage.blurLevel);
       }
@@ -518,8 +451,9 @@ struct Index {
           .width('100%')
           .padding({ left: 8, right: 8, top: 8, bottom: 8 })
           .onClick(() => {
-            this.getUIContext().getRouter().pushUrl({ url: 'pages/Schedule' })
-              .catch((err: Error) => { console.error(`Router ERROR: [${err.name}] ${err.message}`) })
+            this.pageInfo.replacePath({ name: 'Schedule', param: this.windowRect.height }, true)
+            // this.getUIContext().getRouter().pushUrl({ url: 'pages/Schedule' })
+            //   .catch((err: Error) => { console.error(`Router ERROR: [${err.name}] ${err.message}`) })
           })
 
           if (this.showRecentCourse) {
@@ -700,7 +634,7 @@ struct Index {
       }
       .width('100%')
       .borderRadius(20)
-      .margin({ top: 8 })
+      .margin({ top: 5 })
       .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
       .backgroundBlurStyle(BackgroundImage.blurLevel);
 
@@ -836,26 +770,22 @@ struct Index {
       }
       .width('100%')
       .borderRadius(20)
-      .margin({ top: 15 })
+      .margin({ top: 5 })
       .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
       .backgroundBlurStyle(BackgroundImage.blurLevel);
 
       ListItem() {
-        Row() {
-          Text($r('app.string.not_newest'))
-            .fontColor($r('app.color.transparent_text'))
-            .fontSize(12)
-        }
-        .width('100%')
-        .justifyContent(FlexAlign.Center)
+        Text($r('app.string.not_newest'))
+          .fontColor($r('app.color.transparent_text'))
+          .fontSize(12)
       }
-      .margin({ top: 10, bottom: 40 })
+      .margin({ bottom: 13 })
     }
     .width('100%')
     .height('100%')
     .scrollBar(BarState.Auto)
     .padding({ left: 12, right: 12 })
-    .margin({ top: 16 })
+    .margin({ top: 8 })
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
   }
 
@@ -1138,66 +1068,70 @@ struct Index {
   /**
    * Tabs 主控程序
    */
+  pageInfo: NavPathStack = new NavPathStack();
+
   build() {
     Column() {
-      Tabs({
-        barPosition: BarPosition.End,
-        controller: this.tabsController
-      }) {
+      Navigation(this.pageInfo) {
+        Tabs({ barPosition: BarPosition.End, controller: this.tabsController }) {
+          /**
+           * Tab: 首页
+           */
+          TabContent() {
+            this.pageStart()
+          }
+          .padding({ left: 7, right: 7 })
+          .backgroundColor(BackgroundImage.showImage ? undefined : $r('app.color.normal_background'))
+          .tabBar(this.tabBuilder($r('app.string.page_start'), 0, $r('app.media.tab0_selected'),
+            $r('app.media.tab0_unselected')))
+          .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
 
-        /**
-         * Tab: 首页
-         */
-        TabContent() {
-          this.pageStart()
+          /**
+           * Tab: 功能
+           */
+          TabContent() {
+            this.pageFunction()
+          }
+          .padding({ left: 7, right: 7 })
+          .backgroundColor(BackgroundImage.showImage ? undefined : $r('app.color.normal_background'))
+          .tabBar(this.tabBuilder($r('app.string.page_function'), 1, $r('app.media.tab1_selected'),
+            $r('app.media.tab1_unselected')))
+          .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
+
+          /**
+           * Tab: 设置
+           */
+          TabContent() {
+            this.pageSettings()
+          }
+          .padding({ left: 7, right: 7 })
+          .backgroundColor(BackgroundImage.showImage ? undefined : $r('app.color.normal_background'))
+          .tabBar(this.tabBuilder($r('app.string.page_settings'), 2, $r('app.media.tab2_selected'),
+            $r('app.media.tab2_unselected')))
+          .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
+
         }
-        .padding({ left: 7, right: 7 })
-        .backgroundColor(BackgroundImage.showImage ? undefined : $r('app.color.normal_background'))
-        .tabBar(this.tabBuilder($r('app.string.page_start'), 0, $r('app.media.tab0_selected'),
-          $r('app.media.tab0_unselected')))
+        .barBackgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.shaded_background') : undefined)
+        .barBackgroundBlurStyle(BackgroundImage.blurLevel)
+        .opacity(BackgroundImage.opacityLevel)
+        .barHeight('auto')
+        .barWidth('100%')
+        .vertical(false)
+        .barPosition(BarPosition.End)
+        .barMode(BarMode.Fixed)
         .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
-
-        /**
-         * Tab: 功能
-         */
-        TabContent() {
-          this.pageFunction()
-        }
-        .padding({ left: 7, right: 7 })
-        .backgroundColor(BackgroundImage.showImage ? undefined : $r('app.color.normal_background'))
-        .tabBar(this.tabBuilder($r('app.string.page_function'), 1, $r('app.media.tab1_selected'),
-          $r('app.media.tab1_unselected')))
-        .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
-
-        /**
-         * Tab: 设置
-         */
-        TabContent() {
-          this.pageSettings()
-        }
-        .padding({ left: 7, right: 7 })
-        .backgroundColor(BackgroundImage.showImage ? undefined : $r('app.color.normal_background'))
-        .tabBar(this.tabBuilder($r('app.string.page_settings'), 2, $r('app.media.tab2_selected'),
-          $r('app.media.tab2_unselected')))
-        .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
-
+        .onAnimationStart((_index: number, targetIndex: number) => {
+          this.currentIndex = targetIndex;
+          if (this.currentIndex === 1) {
+            FunctionOrder.refreshFunc(); // 刷新点击次数显示
+            this.copyMostUsedFunc = FunctionOrder.mostUsedFunc;
+          }
+        })
       }
-      .barBackgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.shaded_background') : undefined)
-      .barBackgroundBlurStyle(BackgroundImage.blurLevel)
-      .opacity(BackgroundImage.opacityLevel)
-      .barHeight(this.tabHeight)
-      .barWidth(this.tabWidth)
-      .vertical(this.tabHorizontal)
-      .barPosition(BarPosition.End)
-      .barMode(BarMode.Fixed)
-      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
-      .onAnimationStart((_index: number, targetIndex: number) => {
-        this.currentIndex = targetIndex;
-        if (this.currentIndex === 1) {
-          FunctionOrder.refreshFunc(); // 刷新点击次数显示
-          this.copyMostUsedFunc = FunctionOrder.mostUsedFunc;
-        }
-      })
+      .backgroundColor('#00d00721')
+      .navBarWidthRange(['360vp', '50%'])
+      .hideTitleBar(true)
+      .hideToolBar(true)
     }
     .height('100%')
     .width('100%')

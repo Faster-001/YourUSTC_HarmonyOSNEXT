@@ -3,6 +3,8 @@
 
 # <image src="AppScope/resources/base/media/icon_round.png" height="28" width="28"/> 妮可之记 <br> <font size="4">for HarmonyOS NEXT</font>
 
+<image src="resources/introduction.png" width="100%"/>
+
 [![Stars](https://img.shields.io/github/stars/Your-USTC/YourUSTC_HarmonyOSNEXT)](https://github.com/Your-USTC/YourUSTC_HarmonyOSNEXT)
 &nbsp;
 [![Forks](https://img.shields.io/github/forks/Your-USTC/YourUSTC_HarmonyOSNEXT)](https://github.com/Your-USTC/YourUSTC_HarmonyOSNEXT)
@@ -47,7 +49,7 @@
 - [x] 适配浅色/深色模式
 - [x] 网页可强制以深色模式显示
 - [x] 定制首页功能
-- [ ] “你的课表”和“考试信息”可添加至桌面卡片
+- [x] “你的课表”和“考试信息”可添加至桌面卡片
 
 ## 软件截图
 

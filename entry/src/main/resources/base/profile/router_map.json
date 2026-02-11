@@ -1,0 +1,12 @@
+{
+  "routerMap": [
+    {
+      "name": "Schedule",
+      "pageSourceFile": "src/main/ets/pages/Schedule.ets",
+      "buildFunction": "ScheduleBuilder",
+      "data": {
+        "description": "this is schedule page"
+      }
+    }
+  ]
+}
