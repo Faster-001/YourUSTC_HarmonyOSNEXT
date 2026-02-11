@@ -847,6 +847,14 @@
     {
       "name": "password",
       "value": "密码："
+    },
+    {
+      "name": "exam_info_desc",
+      "value": "显示考试信息"
+    },
+    {
+      "name": "exam_info_display_name",
+      "value": "考试信息"
     }
   ]
 }

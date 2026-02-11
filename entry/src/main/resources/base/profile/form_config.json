@@ -21,6 +21,28 @@
         "2*4",
         "4*4"
       ]
+    },
+    {
+      "name": "exam_info",
+      "displayName": "$string:exam_info_display_name",
+      "description": "$string:exam_info_desc",
+      "src": "./ets/exam_info/pages/Exam_infoCard.ets",
+      "uiSyntax": "arkts",
+      "window": {
+        "designWidth": 720,
+        "autoDesignWidth": true
+      },
+      "colorMode": "auto",
+      "isDynamic": true,
+      "isDefault": false,
+      "updateEnabled": false,
+      "scheduledUpdateTime": "10:30",
+      "updateDuration": 1,
+      "defaultDimension": "2*4",
+      "supportDimensions": [
+        "2*4",
+        "4*4"
+      ]
     }
   ]
 }

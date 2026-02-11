@@ -3,6 +3,7 @@ import { formBindingData, FormExtensionAbility, formInfo, formProvider } from '@
 import { Want } from '@kit.AbilityKit';
 import * as ScheduleSources from '../constants/ScheduleSources';
 import scheduleManager from '../utils/TimeTable';
+import examManager, { examAttribute } from '../utils/ExamManager';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import UnifiedPreferences, { SCHEDULE_KEY, UID_KEY } from '../utils/UnifyPreference'
 import { CardListParameter } from '../class_schedule_daily/viewmodel/CardListParameter';
@@ -28,15 +29,23 @@ class FormDataClass {
     /* isBottomIcon             */ false,
     /* bottomIcon               */ undefined
   )
+  examInfo: examAttribute[] = [];
   lastRefresh: string = '';
-  constructor() {
-    scheduleManager.getFormattedSchedule();
-    if (!scheduleManager.isTermEnd) {
-      this.todayCourse = scheduleManager.formattedSchedule[scheduleManager.weekDisplayed][scheduleManager.today];
-      this.tomorrowCourse = scheduleManager.formattedSchedule[scheduleManager.weekDisplayed +
-        (scheduleManager.today == 5 ? 1 : 0)][(scheduleManager.today + 1) % 7];
+  constructor(refreshType: number) {
+    if (refreshType === 0) { // 0 → 刷新课表
+      scheduleManager.getFormattedSchedule();
+      if (!scheduleManager.isTermEnd) {
+        this.todayCourse = scheduleManager.formattedSchedule[scheduleManager.weekDisplayed][scheduleManager.today];
+        this.tomorrowCourse = scheduleManager.formattedSchedule[scheduleManager.weekDisplayed +
+          (scheduleManager.today == 5 ? 1 : 0)][(scheduleManager.today + 1) % 7];
+      }
+      this.cardListParameter.itemCount = this.todayCourse.length;
+    } else if (refreshType === 1) { // 1 → 刷新考试
+      this.cardListParameter.title = $r("app.string.exam_detail");
+      examManager.readStoredExam();
+      this.examInfo = examManager.allExamInfo;
+      this.cardListParameter.itemCount = this.examInfo.length;
     }
-    this.cardListParameter.itemCount = this.todayCourse.length;
     const now = scheduleManager.currentTime;
     this.lastRefresh = `上次刷新: ${now.getMonth() + 1}月${now.getDate()}日${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`
   }
@@ -45,8 +54,10 @@ class FormDataClass {
 export default class EntryFormAbility extends FormExtensionAbility {
   onAddForm(want: Want) {
     // Called to return a FormBindingData object.
+    const formName = want.parameters![formInfo.FormParam.NAME_KEY].toString();
     UnifiedPreferences.init(this.context)
-    return formBindingData.createFormBindingData(new FormDataClass());
+    let data: FormDataClass = new FormDataClass(formName.includes('schedule') ? 0 : 1);
+    return formBindingData.createFormBindingData(data);
   }
 
   onCastToNormalForm(formId: string) {
@@ -62,7 +73,8 @@ export default class EntryFormAbility extends FormExtensionAbility {
     hilog.info(DOMAIN_NUMBER, TAG, `FormAbility onFormEvent, formId = ${formId}, message: ${JSON.stringify(message)}`);
 
     UnifiedPreferences.init(this.context)
-    let formData = new FormDataClass();
+    const eventSource: string = JSON.parse(message).msgTest
+    let formData = new FormDataClass(eventSource === 'schedule' ? 0 : 1);
 
     const formInfo: formBindingData.FormBindingData = formBindingData.createFormBindingData(formData);
     formProvider.updateForm(formId, formInfo).then(() => {

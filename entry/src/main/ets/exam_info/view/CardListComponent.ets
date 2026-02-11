@@ -37,7 +37,7 @@ export struct CardListComponent {
                 .width(24)
                 .height(16)
                 .borderRadius(8)
-              }
+            }
 
             Text(this.lastRefresh)
               .opacity(0.8)
@@ -52,7 +52,7 @@ export struct CardListComponent {
               .onClick(() => {
                 postCardAction(this, {
                   action: 'message',
-                  params: { msgTest: 'schedule' }
+                  params: { msgTest: 'exam' }
                 });
               })
           }
