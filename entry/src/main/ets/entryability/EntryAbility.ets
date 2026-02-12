@@ -2,6 +2,7 @@
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router, window } from '@kit.ArkUI';
+import { deviceInfo } from '@kit.BasicServicesKit';
 
 import UnifiedPreferences from '../utils/UnifyPreference';
 
@@ -42,21 +43,40 @@ export default class EntryAbility extends UIAbility {
       });
     } else {
       UnifiedPreferences.putSync('FaultOccurred', true);
-      windowStage.loadContent('pages/Index', (err) => {
-        if (err.code) {
-          hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
-          return;
-        }
-        hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
-        if (this.routerPath) {
-          const mainWindow = windowStage.getMainWindowSync();
-          setTimeout(() => {
-            mainWindow.getUIContext().getRouter().pushUrl({
-              url: this.routerPath
-            }, router.RouterMode.Standard);
-          }, 100);
-        }
-      });
+      if (deviceInfo.deviceType === "phone") {
+        windowStage.loadContent('pages/PhoneIndex', (err) => {
+          if (err.code) {
+            hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
+            return;
+          }
+          hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
+          if (this.routerPath) {
+            const mainWindow = windowStage.getMainWindowSync();
+            setTimeout(() => {
+              mainWindow.getUIContext().getRouter().pushUrl({
+                url: this.routerPath
+              }, router.RouterMode.Standard);
+            }, 100);
+          }
+        });
+      }
+      else {
+        windowStage.loadContent('pages/Index', (err) => {
+          if (err.code) {
+            hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
+            return;
+          }
+          hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
+          if (this.routerPath) {
+            const mainWindow = windowStage.getMainWindowSync();
+            setTimeout(() => {
+              mainWindow.getUIContext().getRouter().pushUrl({
+                url: this.routerPath
+              }, router.RouterMode.Standard);
+            }, 100);
+          }
+        });
+      }
     }
   }
 

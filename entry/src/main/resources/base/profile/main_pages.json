@@ -8,6 +8,8 @@
     "pages/Help",
     "pages/ExamDetail",
     "pages/GetSchedule",
-    "pages/Declaration"
+    "pages/Declaration",
+    "pages/PhoneIndex",
+    "pages/test"
   ]
 }

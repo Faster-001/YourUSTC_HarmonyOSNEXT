@@ -157,43 +157,32 @@ export default struct PasswordDialog {
           .layoutWeight(1)
         Button($r('app.string.ok'))
           .onClick(() => {
-            let correctInput: boolean = true;
-            if (this.inputUID === '')
+            let emptyInput: boolean = false;
+            if (this.inputUID === '') {
+              emptyInput = true;
               UnifiedPreferences.deleteSync(UID_KEY);
-            else {
-              if (/^[A-Z]{2}\d{8}$/.test(this.inputUID)) {
-                UnifiedPreferences.putSync(UID_KEY, this.inputUID);
-              } else {
-                correctInput = false;
-                this.getUIContext().getPromptAction().showToast({ message: $r('app.string.incomplete') });
-              }
+            }
+            if (this.inputPassword === '') {
+              emptyInput = true;
+              UnifiedPreferences.deleteSync(PASSWORD_KEY);
             }
 
-            if (this.inputPassword === '')
-              UnifiedPreferences.deleteSync(PASSWORD_KEY);
-            else {
-              if (
-                !/\s/.test(this.inputPassword) && /[a-z]/.test(this.inputPassword) && this.inputPassword.length >= 8 &&
-                /[A-Z]/.test(this.inputPassword) && /\d/.test(this.inputPassword) && this.inputPassword.length <= 32
-              )
-                UnifiedPreferences.putSync(PASSWORD_KEY, accountInfoProvider.encryptPassword(this.inputPassword));
-              else {
-                if (correctInput) {
-                  this.getUIContext().getPromptAction().showToast({ message: $r('app.string.incomplete') });
-                  correctInput = false;
-                }
+            if (emptyInput) {
+              this.getUIContext().getPromptAction().showToast({ message: $r('app.string.cannot_fill') });
+            } else {
+              UnifiedPreferences.putSync(UID_KEY, this.inputUID);
+              UnifiedPreferences.putSync(PASSWORD_KEY, accountInfoProvider.encryptPassword(this.inputPassword));
+              if (!/^[A-Z]{2}\d{8}$/.test(this.inputUID) ||
+                !(!/\s/.test(this.inputPassword) && /[a-z]/.test(this.inputPassword) &&
+                  this.inputPassword.length >= 8 &&
+                /[A-Z]/.test(this.inputPassword) && /\d/.test(this.inputPassword) && this.inputPassword.length <= 32)
+              ) {
+                this.getUIContext().getPromptAction().showToast({ message: $r('app.string.incomplete'), duration: 5000 });
+              } else {
+                this.getUIContext().getPromptAction().showToast({ message: $r('app.string.fill_next_time'), duration: 3000 });
               }
             }
-            
-            if (correctInput) {
-              if (this.inputUID !== '' && this.inputPassword !== '') {
-                this.getUIContext().getPromptAction().showToast({ message: $r('app.string.fill_next_time') });
-                this.onConfirm();
-              }
-              else
-                this.getUIContext().getPromptAction().showToast({ message: $r('app.string.cannot_fill') });
-              this.controller.close();
-            }
+            this.controller.close();
           })
           .layoutWeight(1)
       }
