@@ -3,6 +3,7 @@ import * as tools from '../utils/tools';
 import scheduleManager, { areClassAttributesEqual } from '../utils/TimeTable';
 import { mediaquery, PopoverDialog, Popup, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
+import { deviceInfo } from '@kit.BasicServicesKit';
 import * as ScheduleSources from '../constants/ScheduleSources';
 import BackgroundImage from '../view/BgImageManager';
 import { classAttribute } from '../constants/ScheduleSources';
@@ -439,7 +440,11 @@ struct Schedule {
               .height(22)
               .draggable(false)
               .onClick(() => {
-                this.pathStack.pop();
+                if (deviceInfo.deviceType === "phone") {
+                  this.getUIContext().getRouter().back();
+                } else {
+                  this.pathStack.pop();
+                }
               })
 
             Badge({ count: this.conflictSchedule.length, style: { badgeSize: 14, badgeColor: '#FA2A2D' } }) {
@@ -917,6 +922,9 @@ struct Schedule {
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     }
     .backgroundColor('#00d00721')
+    .backgroundImage(deviceInfo.deviceType === "phone" ? BackgroundImage.pic : undefined)
+    .backgroundImageSize(ImageSize.Cover)
+    .backgroundImagePosition(Alignment.Center)
     .hideTitleBar(true)
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;
