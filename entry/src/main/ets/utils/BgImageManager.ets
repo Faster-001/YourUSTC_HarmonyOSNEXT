@@ -37,6 +37,39 @@ export const presetColor: iPresetColor[] = [
 const DARK_TARGET_LUMINANCE: number = 90;
 const DARK_MIN_FACTOR: number = 0.3;
 
+/**
+ * 深色模式判定的纯函数版：不改动单例缓存，供设置页预览按未应用的目标模式推算。
+ * 与 syncDarkMode 判定逻辑保持同源，确保预览与确认应用后的效果一致
+ * @param colorMode 目标颜色模式（ConfigurationConstant.ColorMode）
+ * @param context 上下文，仅“跟随系统”时用于读取当前配置
+ * @returns 是否处于深色模式
+ */
+export function resolveDarkMode(colorMode: number, context: Context): boolean {
+  if (colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK)
+    return true;
+  if (colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT)
+    return false;
+  try {
+    return context.getApplicationContext().resourceManager.getConfigurationSync().colorMode
+      === resourceManager.ColorMode.DARK;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 亮度调节系数的纯函数版，darkMode 由调用方传入（单例方法与设置页预览共用）
+ * @param avgBrightness 图片平均亮度（0-255），未测量时传-1
+ * @param enabled 是否启用自动降低亮度
+ * @param darkMode 是否处于深色模式
+ * @returns 亮度系数（DARK_MIN_FACTOR到1之间），浅色模式或未启用时返回1
+ */
+export function computeAutoBrightFactor(avgBrightness: number, enabled: boolean, darkMode: boolean): number {
+  if (!enabled || !darkMode || avgBrightness < 0)
+    return 1;
+  return Math.max(DARK_MIN_FACTOR, Math.min(1, DARK_TARGET_LUMINANCE / avgBrightness));
+}
+
 // 中色目标明度（HSL的L取值0-1）：主色过亮/过暗时先校准到此值，再派生深浅背景色
 const MID_TARGET_LIGHTNESS: number = 0.55;
 
@@ -203,18 +236,7 @@ class BackgroundImage {
    * @param context 上下文，仅"跟随系统"时用于读取当前配置
    */
   syncDarkMode(context: Context) {
-    if (this.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK)
-      this.darkMode = true;
-    else if (this.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT)
-      this.darkMode = false;
-    else {
-      try {
-        this.darkMode = context.getApplicationContext().resourceManager.getConfigurationSync().colorMode
-          === resourceManager.ColorMode.DARK;
-      } catch {
-        this.darkMode = false;
-      }
-    }
+    this.darkMode = resolveDarkMode(this.colorMode, context);
   }
 
   /**
@@ -326,9 +348,7 @@ class BackgroundImage {
    * @returns 亮度系数（DARK_MIN_FACTOR到1之间），浅色模式或未启用时返回1
    */
   autoBrightFactor(avgBrightness: number, enabled: boolean): number {
-    if (!enabled || !this.darkMode || avgBrightness < 0)
-      return 1;
-    return Math.max(DARK_MIN_FACTOR, Math.min(1, DARK_TARGET_LUMINANCE / avgBrightness));
+    return computeAutoBrightFactor(avgBrightness, enabled, this.darkMode);
   }
 
   /**

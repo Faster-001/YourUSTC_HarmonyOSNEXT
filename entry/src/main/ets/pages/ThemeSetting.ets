@@ -5,7 +5,10 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { effectKit } from '@kit.ArkGraphics2D';
 import UnifiedPreferences from '../utils/UnifyPreference';
-import BackgroundImage, { customPreset, customPresetIndex, iPresetColor, presetColor } from '../utils/BgImageManager';
+import BackgroundImage, {
+  computeAutoBrightFactor,
+  customPreset, customPresetIndex, iPresetColor, presetColor,
+  resolveDarkMode } from '../utils/BgImageManager';
 
 @Builder
 export function ThemeBuilder(name: string, param?: number[]) {
@@ -98,6 +101,12 @@ struct ThemeSetting {
   readonly singleRotate: number = 360 / colorNum;
 
   pathStack: NavPathStack = new NavPathStack();
+  @State imgDrawnWidth: number = 0; // 底色块尺寸＝预览图实际绘制区域（Contain 适配后）
+  @State imgDrawnHeight: number = 0;
+  private imgLoadedWidth: number = 0; // 解码后图片原始尺寸（px）
+  private imgLoadedHeight: number = 0;
+  private imgAreaWidth: number = 0; // Image 组件实际区域（vp），被 constraintSize 钳制后可能与绘制区域不同
+  private imgAreaHeight: number = 0;
   menuItems: Array<NavigationMenuItem> = [
     {
       value: $r('app.string.ok_and_apply'),
@@ -139,6 +148,16 @@ struct ThemeSetting {
             .width('100%')
 
             Stack() {
+              // 底色与实际主页面一致（Index 背景图下的纯白/纯黑）。不能挂在 Image 上（会被 opacity 一起变透明），
+              // 也不能铺满 Stack：Contain 在组件被钳制时会留白，底色需按实际绘制区域单独铺一块
+              if (this.isShown) {
+                Column()
+                  .backgroundColor($r('app.color.pure_white_or_black'))
+                  .borderRadius(16)
+                  .width(this.imgDrawnWidth)
+                  .height(this.imgDrawnHeight)
+              }
+
               Image(this.isShown ? this.imgPreview : $r('app.media.suspect'))
                 .alt($r('app.media.suspect'))
                 .width('100%')
@@ -155,6 +174,10 @@ struct ThemeSetting {
                 })
                 .onComplete((value) => {
                   if (value !== undefined) {
+                    // 先记录原始解码尺寸供底色块计算，再沿用原有横竖图交换逻辑
+                    this.imgLoadedWidth = value.width;
+                    this.imgLoadedHeight = value.height;
+                    this.updateDrawnSize();
                     let swapTemp: number;
                     if (value.width > value.height) {
                       swapTemp = value.width;
@@ -170,6 +193,11 @@ struct ThemeSetting {
                     this.showWarning = false;
                   }
                 })
+                .onAreaChange((oldArea: Area, newArea: Area) => {
+                  this.imgAreaWidth = newArea.width as number;
+                  this.imgAreaHeight = newArea.height as number;
+                  this.updateDrawnSize();
+                })
 
               Button($r('app.string.pick_image'))
                 .buttonStyle(ButtonStyleMode.NORMAL)
@@ -179,8 +207,7 @@ struct ThemeSetting {
                   this.SelectImage();
                 })
             }
-            .margin({ bottom: 5 })
-            .padding({ left: 16, right: 16 })
+            .margin({ bottom: 5, left: 16, right: 16 })
 
             Row() {
               Text($r('app.string.background_opaque'))
@@ -590,7 +617,22 @@ struct ThemeSetting {
    */
   previewBrightnessFactor(): number {
     const avgBrightness = this.selectResult !== undefined ? this.pickedAvgBrightness : BackgroundImage.avgBrightness;
-    return BackgroundImage.autoBrightFactor(avgBrightness, this.autoDecBright);
+    return computeAutoBrightFactor(avgBrightness, this.autoDecBright, resolveDarkMode(this.colorMode, this.getUIContext().getHostContext() as Context));
+  }
+
+  /**
+   * 依据解码尺寸与组件区域按 Contain 规则计算图片实际绘制区域，
+   * 供底色块贴合作图范围（组件被 maxHeight/minHeight 钳制时组件内会出现留白）
+   */
+  private updateDrawnSize(): void {
+    if (this.imgLoadedWidth <= 0 || this.imgLoadedHeight <= 0 || this.imgAreaWidth <= 0 || this.imgAreaHeight <= 0) {
+      this.imgDrawnWidth = 0;
+      this.imgDrawnHeight = 0;
+      return;
+    }
+    const scale: number = Math.min(this.imgAreaWidth / this.imgLoadedWidth, this.imgAreaHeight / this.imgLoadedHeight);
+    this.imgDrawnWidth = this.imgLoadedWidth * scale;
+    this.imgDrawnHeight = this.imgLoadedHeight * scale;
   }
 
   /**
