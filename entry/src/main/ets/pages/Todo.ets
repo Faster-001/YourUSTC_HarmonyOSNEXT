@@ -4,7 +4,11 @@ import {
   TodoItem, TodoType, SubmitChannel, IndexedTodoItem,
   addItem, updateItem, removeItem, filterItems, getEffectiveTime
 } from '../utils/TodoStorage';
-import { CounterComponent, CounterType } from '@kit.ArkUI';
+import {
+  CounterComponent, CounterType,
+  SegmentButton, SegmentButtonOptions, ItemRestriction, SegmentButtonTextItem,
+  SegmentButtonItemTuple
+} from '@kit.ArkUI';
 
 /** 提交渠道显示名，下标与 SubmitChannel 枚举值对应 */
 const CHANNEL_NAMES: string[] = ['BB', 'QQ', '邮箱', '线上', '线下'];
@@ -25,12 +29,33 @@ struct TodoPage {
   @State todoList: IndexedTodoItem[] = [];
   /** 过滤类型：-1 全部，其余为 TodoType */
   @State filterType: number = -1;
+  /** 分类分段按钮选中项下标（0 全部 / 1 待办 / 2 作业），与 filterType 保持映射同步 */
+  @State filterIndexes: number[] = [0];
+  /** 分类分段按钮配置，颜色随主题在 refresh 中刷新 */
+  @State filterOptions: SegmentButtonOptions = SegmentButtonOptions.tab({
+    buttons: [{ text: '全部' }, { text: '待办' }, { text: '作业' }] as ItemRestriction<SegmentButtonTextItem>,
+    fontColor: presetColor[BackgroundImage.themeColor].accentColor,
+    selectedFontColor: '#ffffff',
+    backgroundColor: BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : '#33ffffff',
+    selectedBackgroundColor: presetColor[BackgroundImage.themeColor].accentColor
+  });
   @State showSheet: boolean = false;
   /** 正在编辑的条目原始下标，-1 表示新建 */
   @State editingIndex: number = -1;
 
   // 编辑弹窗草稿
   @State draftType: TodoType = TodoType.Todo;
+  /** 类型分段按钮选中项下标（0 待办事项 / 1 作业），与 draftType 同步 */
+  @State draftTypeIndexes: number[] = [0];
+  /** 类型分段按钮配置，颜色随主题在 refresh 中刷新 */
+  @State draftTypeOptions: SegmentButtonOptions = SegmentButtonOptions.capsule({
+    buttons: [{ text: '待办事项' }, { text: '作业' }] as SegmentButtonItemTuple,
+    multiply: false,
+    fontColor: presetColor[BackgroundImage.themeColor].accentColor,
+    selectedFontColor: '#ffffff',
+    backgroundColor: '#33888888',
+    selectedBackgroundColor: presetColor[BackgroundImage.themeColor].accentColor
+  });
   @State draftText: string = '';
   @State draftBeginEnabled: boolean = false;
   @State draftEndEnabled: boolean = false;
@@ -41,7 +66,20 @@ struct TodoPage {
   @State endMinute: number = 0;
   @State draftChannels: boolean[] = [false, false, false, false, false];
 
+  /** 分段按钮下标 → 过滤类型 */
+  filterIndexToType(index: number): number {
+    return [-1, TodoType.Todo, TodoType.Assignment][index];
+  }
+
   refresh(): void {
+    // SegmentButton 的颜色保存在 options 中，主题变化时需手动同步
+    const accent = presetColor[BackgroundImage.themeColor].accentColor;
+    this.filterOptions.fontColor = accent;
+    this.filterOptions.selectedBackgroundColor = accent;
+    this.draftTypeOptions.fontColor = accent;
+    this.draftTypeOptions.selectedBackgroundColor = accent;
+    this.filterOptions.backgroundColor =
+      BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : '#33ffffff';
     const list = filterItems((item: TodoItem): boolean =>
       this.filterType < 0 || item.type === this.filterType);
     list.sort((a: IndexedTodoItem, b: IndexedTodoItem): number =>
@@ -115,6 +153,7 @@ struct TodoPage {
         }
       }
     }
+    this.draftTypeIndexes = [this.draftType];
     this.showSheet = true;
   }
 
@@ -224,24 +263,17 @@ struct TodoPage {
 
   @Builder
   filterBar() {
-    Row({ space: 8 }) {
-      ForEach([-1, TodoType.Todo, TodoType.Assignment], (type: number) => {
-        Text(type === -1 ? '全部' : (type === TodoType.Todo ? '待办' : '作业'))
-          .fontSize(14)
-          .fontColor(this.filterType === type ? '#ffffff' : presetColor[BackgroundImage.themeColor].accentColor)
-          .padding({ left: 14, right: 14, top: 5, bottom: 5 })
-          .borderRadius(14)
-          .backgroundColor(this.filterType === type ?
-            presetColor[BackgroundImage.themeColor].accentColor :
-            BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : '#33ffffff')
-          .onClick(() => {
-            this.filterType = type;
-            this.refresh();
-          })
+    Row() {
+      SegmentButton({
+        options: this.filterOptions,
+        selectedIndexes: $filterIndexes,
+        onItemClicked: (index: number) => {
+          this.filterType = this.filterIndexToType(index);
+          this.refresh();
+        }
       })
     }
-    .width('100%')
-    .justifyContent(FlexAlign.Center)
+    .width('60%')
     .margin({ top: 8 })
   }
 
@@ -381,20 +413,16 @@ struct TodoPage {
           Row() {
             Text('类型')
               .width(70)
-            Row({ space: 8 }) {
-              ForEach([TodoType.Todo, TodoType.Assignment], (t: number) => {
-                Text(t === TodoType.Todo ? '待办事项' : '作业')
-                  .fontSize(14)
-                  .fontColor(this.draftType === t ? '#ffffff' : presetColor[BackgroundImage.themeColor].accentColor)
-                  .padding({ left: 14, right: 14, top: 5, bottom: 5 })
-                  .borderRadius(14)
-                  .backgroundColor(this.draftType === t ?
-                    presetColor[BackgroundImage.themeColor].accentColor : '#33888888')
-                  .onClick(() => {
-                    this.draftType = t;
-                  })
+            Row() {
+              SegmentButton({
+                options: this.draftTypeOptions,
+                selectedIndexes: $draftTypeIndexes,
+                onItemClicked: (index: number) => {
+                  this.draftType = index as TodoType;
+                }
               })
             }
+            .layoutWeight(1)
           }
           .margin({ bottom: 10 })
 
