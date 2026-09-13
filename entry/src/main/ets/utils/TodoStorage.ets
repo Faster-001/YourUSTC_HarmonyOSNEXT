@@ -34,6 +34,8 @@ export interface TodoItem {
   type: TodoType,
   /** 条目文字内容 */
   text: string,
+  /** 课程分类名（可省略表示未分类） */
+  course?: string,
   /** 待办开始时间（毫秒时间戳），可省略表示不限 */
   beginTime?: number,
   /** 待办结束时间（毫秒时间戳），可省略表示不限 */

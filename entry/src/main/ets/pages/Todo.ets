@@ -1,9 +1,12 @@
 import BackgroundImage, { presetColor } from '../utils/BgImageManager';
 import MessageDialog from '../view/MessageDialog';
 import {
-  TodoItem, TodoType, SubmitChannel, IndexedTodoItem,
+  TodoItem, TodoType, SubmitChannel, IndexedTodoItem, getItems,
   addItem, updateItem, removeItem, filterItems, getEffectiveTime
 } from '../utils/TodoStorage';
+import ScheduleManager from '../utils/Classes/ScheduleManager';
+import * as ScheduleStorage from '../utils/ScheduleStorage';
+import { classAttribute } from '../constants/ScheduleSources';
 import {
   CounterComponent, CounterType,
   SegmentButton, SegmentButtonOptions, ItemRestriction, SegmentButtonTextItem,
@@ -43,6 +46,15 @@ struct TodoPage {
   /** 正在编辑的条目原始下标，-1 表示新建 */
   @State editingIndex: number = -1;
 
+  /** 课程过滤：'' 表示全部，其余为课程名 */
+  @State filterCourse: string = '';
+  /** 列表条目中出现过的课程名（用于过滤栏） */
+  @State filterCourseNames: string[] = [];
+  /** 编辑弹窗草稿：课程分类 */
+  @State draftCourse: string = '';
+  /** 默认学期课表中的课程名列表（去重），供快速填写 */
+  @State courseNames: string[] = [];
+
   // 编辑弹窗草稿
   @State draftType: TodoType = TodoType.Todo;
   /** 类型分段按钮选中项下标（0 待办事项 / 1 作业），与 draftType 同步 */
@@ -80,11 +92,39 @@ struct TodoPage {
     this.draftTypeOptions.selectedBackgroundColor = accent;
     this.filterOptions.backgroundColor =
       BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : '#33ffffff';
+    const courseSet: string[] = [];
+    getItems().forEach((item: TodoItem): void => {
+      if (item.course !== undefined && item.course !== '' && !courseSet.includes(item.course)) {
+        courseSet.push(item.course);
+      }
+    });
+    this.filterCourseNames = courseSet;
+    if (this.filterCourse !== '' && !courseSet.includes(this.filterCourse)) {
+      this.filterCourse = '';
+    }
     const list = filterItems((item: TodoItem): boolean =>
-      this.filterType < 0 || item.type === this.filterType);
+      (this.filterType < 0 || item.type === this.filterType) &&
+      (this.filterCourse === '' || item.course === this.filterCourse));
     list.sort((a: IndexedTodoItem, b: IndexedTodoItem): number =>
       getEffectiveTime(a.item) - getEffectiveTime(b.item));
     this.todoList = list;
+  }
+
+  /** 从默认学期课表中读取课程名列表（去重），供编辑弹窗快速填写 */
+  loadCourseNames(): void {
+    const names: string[] = [];
+    try {
+      const semester = ScheduleManager.semesters[ScheduleManager.defaultSemester];
+      const courses = ScheduleStorage.getCourses(semester.createTime);
+      courses.forEach((c: classAttribute): void => {
+        if (c.name !== '' && !names.includes(c.name)) {
+          names.push(c.name);
+        }
+      });
+    } catch (e) {
+      console.error('Todo: failed to load course names:', JSON.stringify(e));
+    }
+    this.courseNames = names;
   }
 
   pad2(value: number): string {
@@ -117,6 +157,7 @@ struct TodoPage {
       this.editingIndex = -1;
       this.draftType = TodoType.Todo;
       this.draftText = '';
+      this.draftCourse = '';
       this.draftBeginEnabled = false;
       this.draftEndEnabled = false;
     } else {
@@ -124,6 +165,7 @@ struct TodoPage {
       this.editingIndex = indexed.index;
       this.draftType = item.type;
       this.draftText = item.text;
+      this.draftCourse = item.course ?? '';
       if (item.type === TodoType.Assignment) {
         this.draftEndEnabled = item.ddl !== undefined;
         this.draftBeginEnabled = false;
@@ -166,6 +208,9 @@ struct TodoPage {
       submitted: false,
       channels: []
     };
+    if (this.draftCourse.trim() !== '') {
+      item.course = this.draftCourse.trim();
+    }
     if (this.draftType === TodoType.Assignment) {
       if (this.draftEndEnabled) {
         item.ddl = this.buildTime(this.draftDate, this.endHour, this.endMinute);
@@ -222,6 +267,7 @@ struct TodoPage {
     return {
       type: item.type,
       text: item.text,
+      course: item.course,
       beginTime: item.beginTime,
       endTime: item.endTime,
       ddl: item.ddl,
@@ -278,6 +324,43 @@ struct TodoPage {
   }
 
   @Builder
+  courseFilterBar() {
+    Scroll() {
+      Row({ space: 8 }) {
+        Text('全部')
+          .fontSize(13)
+          .fontColor(this.filterCourse === '' ? '#ffffff' :
+            presetColor[BackgroundImage.themeColor].accentColor)
+          .padding({ left: 12, right: 12, top: 4, bottom: 4 })
+          .borderRadius(12)
+          .backgroundColor(this.filterCourse === '' ?
+            presetColor[BackgroundImage.themeColor].accentColor : '#33888888')
+          .onClick(() => {
+            this.filterCourse = '';
+            this.refresh();
+          })
+        ForEach(this.filterCourseNames, (name: string) => {
+          Text(name)
+            .fontSize(13)
+            .fontColor(this.filterCourse === name ? '#ffffff' :
+              presetColor[BackgroundImage.themeColor].accentColor)
+            .padding({ left: 12, right: 12, top: 4, bottom: 4 })
+            .borderRadius(12)
+            .backgroundColor(this.filterCourse === name ?
+              presetColor[BackgroundImage.themeColor].accentColor : '#33888888')
+            .onClick(() => {
+              this.filterCourse = name;
+              this.refresh();
+            })
+        })
+      }
+    }
+    .scrollable(ScrollDirection.Horizontal)
+    .width('100%')
+    .margin({ top: 8 })
+  }
+
+  @Builder
   todoCard(indexed: IndexedTodoItem) {
     Row({ space: 10 }) {
       // 完成/提交状态圆圈
@@ -309,6 +392,16 @@ struct TodoPage {
             .borderRadius(6)
             .backgroundColor(indexed.item.type === TodoType.Assignment ?
               $r('app.color.hour') : $r('app.color.green'))
+          if (indexed.item.course !== undefined && indexed.item.course !== '') {
+            Text(indexed.item.course)
+              .fontSize(11)
+              .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
+              .padding({ left: 6, right: 6, top: 1, bottom: 1 })
+              .borderRadius(6)
+              .border({ width: 1, color: presetColor[BackgroundImage.themeColor].accentColor })
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.MARQUEE })
+          }
           Text(indexed.item.text)
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
@@ -437,6 +530,44 @@ struct TodoPage {
               })
           }
           .margin({ bottom: 10 })
+
+          // 课程分类
+          Row() {
+            Text('课程')
+              .width(70)
+            TextInput({ text: this.draftCourse, placeholder: '课程分类（可留空）' })
+              .layoutWeight(1)
+              .onChange((input: string) => {
+                this.draftCourse = input;
+              })
+          }
+          .margin({ bottom: 6 })
+
+          // 从默认学期课程快速填写
+          if (this.courseNames.length > 0) {
+            Row() {
+              Scroll() {
+                Row({ space: 8 }) {
+                  ForEach(this.courseNames, (name: string) => {
+                    Text(name)
+                      .fontSize(13)
+                      .fontColor(this.draftCourse === name ? '#ffffff' :
+                        presetColor[BackgroundImage.themeColor].accentColor)
+                      .padding({ left: 12, right: 12, top: 4, bottom: 4 })
+                      .borderRadius(12)
+                      .backgroundColor(this.draftCourse === name ?
+                        presetColor[BackgroundImage.themeColor].accentColor : '#33888888')
+                      .onClick(() => {
+                        this.draftCourse = this.draftCourse === name ? '' : name;
+                      })
+                  })
+                }
+              }
+              .scrollable(ScrollDirection.Horizontal)
+              .width('100%')
+            }
+            .margin({ bottom: 10 })
+          }
 
           if (this.draftType === TodoType.Todo) {
             // 待办：开始时间
@@ -651,6 +782,10 @@ struct TodoPage {
       Column() {
         this.filterBar()
 
+        if (this.filterCourseNames.length > 0) {
+          this.courseFilterBar()
+        }
+
         if (this.todoList.length === 0) {
           Column() {
             Image($r('app.media.list_square_bill'))
@@ -701,6 +836,7 @@ struct TodoPage {
     .backgroundColor(BackgroundImage.showImage ? '#0000' : $r('app.color.normal_background'))
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;
+      this.loadCourseNames();
       this.refresh();
     })
   }
