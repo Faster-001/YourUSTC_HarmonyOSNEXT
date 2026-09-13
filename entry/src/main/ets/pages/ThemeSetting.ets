@@ -150,13 +150,13 @@ struct ThemeSetting {
             Stack() {
               // 底色与实际主页面一致（Index 背景图下的纯白/纯黑）。不能挂在 Image 上（会被 opacity 一起变透明），
               // 也不能铺满 Stack：Contain 在组件被钳制时会留白，底色需按实际绘制区域单独铺一块
-              if (this.isShown) {
-                Column()
-                  .backgroundColor($r('app.color.pure_white_or_black'))
-                  .borderRadius(16)
-                  .width(this.imgDrawnWidth)
-                  .height(this.imgDrawnHeight)
-              }
+              Column()
+                .backgroundColor(resolveDarkMode(this.colorMode, this.getUIContext().getHostContext() as Context) ? '#000000' : '#FFFFFF')
+                .width(this.imgDrawnWidth)
+                .height(this.imgDrawnHeight)
+                .animation({ duration: 500, curve: Curve.Ease, delay: 20 })
+                .borderRadius(16)
+                .visibility(this.isShown ? Visibility.Visible : Visibility.None)
 
               Image(this.isShown ? this.imgPreview : $r('app.media.suspect'))
                 .alt($r('app.media.suspect'))
@@ -168,13 +168,9 @@ struct ThemeSetting {
                 .opacity(this.isShown ? this.imgBrightness / 100 * this.previewBrightnessFactor() : 1)
                 .autoResize(true)
                 .interpolation(ImageInterpolation.Medium)
-                .animation({
-                  duration: 500,
-                  curve: Curve.Ease
-                })
+                .animation({ duration: 500, curve: Curve.Ease })
                 .onComplete((value) => {
                   if (value !== undefined) {
-                    // 先记录原始解码尺寸供底色块计算，再沿用原有横竖图交换逻辑
                     this.imgLoadedWidth = value.width;
                     this.imgLoadedHeight = value.height;
                     this.updateDrawnSize();

@@ -738,6 +738,52 @@ struct Index {
       .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : '#0000')
       .backgroundBlurStyle(BackgroundImage.blurLevel);
 
+
+      ListItem() {
+        Column() {
+          Row() {
+            Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
+              Image($r('app.media.refresh'))
+                .height(20)
+                .width(20)
+                .draggable(false)
+            }
+            .height(36)
+            .width(36)
+            .visibility(this.showExamDetail ? Visibility.Visible : Visibility.Hidden)
+            .onClick(() => {
+              this.refreshInfo();
+            });
+
+            Text('待办事项')
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor($r('app.color.normal_text'))
+
+            Image($r('app.media.right_arrow'))
+              .height(28)
+              .width(28)
+              .margin({ left: 8 })
+              .objectFit(ImageFit.Contain)
+              .draggable(false)
+          }
+          .width('100%')
+          .padding(8)
+          .justifyContent(FlexAlign.SpaceBetween)
+          .onClick(() => {
+            if (this.pageInfo.popToName('Todo') === -1) {
+              this.pageInfo.clear();
+              this.pageInfo.pushPath({ name: 'Todo' });
+            }
+          })
+        }
+      }
+      .width('100%')
+      .borderRadius(20)
+      .margin({ top: 5 })
+      .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : '#0000')
+      .backgroundBlurStyle(BackgroundImage.blurLevel);
+
       ListItem() {
         Text($r('app.string.not_newest'))
           .fontColor($r('app.color.transparent_text'))

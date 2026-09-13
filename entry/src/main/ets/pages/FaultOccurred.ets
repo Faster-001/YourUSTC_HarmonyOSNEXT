@@ -5,6 +5,7 @@ import { common } from '@kit.AbilityKit';
 import { examAttribute } from '../utils/ExamStorage';
 import * as ScheduleStorage from '../utils/ScheduleStorage';
 import * as ExamStorage from '../utils/ExamStorage';
+import * as TodoStorage from '../utils/TodoStorage';
 import { WantAbility } from '../utils/WantAbility';
 
 @Entry
@@ -13,9 +14,11 @@ struct FaultOccurred {
   private button1ClickTimes: number = 0;
   private button2ClickTimes: number = 0;
   private button3ClickTimes: number = 0;
+  private button4ClickTimes: number = 0;
   @State button1Text: ResourceStr = $r('app.string.delete_schedule');
   @State button2Text: ResourceStr = $r('app.string.delete_preference');
   @State button3Text: ResourceStr = $r('app.string.delete_exam_info');
+  @State button4Text: ResourceStr = '删除待办数据'; // TODO: 待前端完善时迁入 string.json
 
   build() {
     Scroll() {
@@ -67,6 +70,18 @@ struct FaultOccurred {
                 this.button3Text = $r('app.string.clear_success');
               } else if (this.button3ClickTimes == 1) {
                 this.button3Text = $r('app.string.click_again_to_delete');
+              }
+            });
+          Button(this.button4Text)
+            .backgroundColor($r('app.color.red'))
+            .margin({ left: 8 })
+            .onClick(() => {
+              this.button4ClickTimes++;
+              if (this.button4ClickTimes == 2) {
+                TodoStorage.clearTodoData();
+                this.button4Text = $r('app.string.clear_success');
+              } else if (this.button4ClickTimes == 1) {
+                this.button4Text = $r('app.string.click_again_to_delete');
               }
             });
         }

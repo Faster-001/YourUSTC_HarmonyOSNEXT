@@ -69,6 +69,11 @@
       "name": "CleanStorage",
       "pageSourceFile": "src/main/ets/pages/CleanStorage.ets",
       "buildFunction": "CleanStorageBuilder"
+    },
+    {
+      "name": "Todo",
+      "pageSourceFile": "src/main/ets/pages/Todo.ets",
+      "buildFunction": "TodoBuilder"
     }
   ]
 }

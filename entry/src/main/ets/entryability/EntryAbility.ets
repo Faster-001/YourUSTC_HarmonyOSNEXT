@@ -7,6 +7,7 @@ import UnifiedPreferences from '../utils/UnifyPreference';
 import * as FunctionOrder from '../utils/FunctionOrder';
 import * as ScheduleStorage from '../utils/ScheduleStorage';
 import * as ExamStorage from '../utils/ExamStorage';
+import * as TodoStorage from '../utils/TodoStorage';
 import { migrate } from '../utils/MigrationManager';
 import BackgroundImage from '../utils/BgImageManager';
 
@@ -24,6 +25,7 @@ export default class EntryAbility extends UIAbility {
     FunctionOrder.init(this.context);
     ScheduleStorage.init(this.context);
     ExamStorage.init(this.context);
+    TodoStorage.init(this.context);
     BackgroundImage.init(this.context);
     migrate();
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
