@@ -104,7 +104,8 @@ export const LINK: LinkSet[] = [
     { title: $r('app.string.LianXiFangShi'), icon: $r('app.media.LianXiFangShi'), url: [
       { url: 'https://www.teach.ustc.edu.cn/service/svc-student/4427.html', subtitle: '本科生教学秘书' },
       { url: 'https://gradschool.ustc.edu.cn/column/161', subtitle: '研究生教学秘书' },
-      { url: 'https://employment.ustc.edu.cn/cn/recruitment/uploadfile/P0327/635658093947187004.pdf', subtitle: '学校常用联系方式' }]},
+      { url: 'https://employment.ustc.edu.cn/cn/recruitment/uploadfile/P0327/635658093947187004.pdf', subtitle: '学校常用联系方式' },
+      { url: 'https://rstar.ustc.edu.cn', subtitle: '本科科研实践平台' }]},
     { title: $r('app.string.QinYouRuXiao'), url: [{ url: 'https://passport.ustc.edu.cn/login?service=http%3A%2F%2Fbwcqyrx.ustc.edu.cn%2Fweixin%2Fvalidate' }], icon: $r('app.media.QinYouRuXiao') },
     { title: $r('app.string.GuoJiJiaoLiu'), url: [{ url: 'https://vista.ustc.edu.cn' }], icon: $r('app.media.GuoJiJiaoLiu') },
     { title: $r('app.string.LiFanXiaoDengJi'), url: [{ url: 'https://lfxdj.ustc.edu.cn' }], icon: $r('app.media.LiFanXiaoDengJi') },
@@ -120,7 +121,7 @@ export const LINK: LinkSet[] = [
     { title: $r('app.string.XiaoYuanBanChe'), url: [{ url: 'https://weixine.ustc.edu.cn/ustcqy/mobile/busTimetable_gov' }], icon: $r('app.media.XiaoYuanBanChe') },
     { title: $r('app.string.QunLiaoHuiZong'), icon: $r('app.media.QunLiaoHuiZong'), url: [
       { url: 'https://docs.qq.com/sheet/DZHZ0b2lVZmFMenFw', subtitle: '科大各类群汇总'},
-      { url: 'https://ustcgroup.pages.dev/', subtitle: 'USTC 群聊信息汇总'}]},
+      { url: 'https://ustcgroup.pages.dev/', subtitle: '群聊信息汇总 by XeF2'}]},
     { title: $r('app.string.YingJuGouPiao'), url: [{ url: "https://ghticket.ustc.edu.cn" }], icon: $r('app.media.YingJuGouPiao') },
     { title: $r('app.string.BaoXiuDaTing'), url: [{ url: 'https://xsfw.ustc.edu.cn' }], icon: $r('app.media.BaoXiuDaTing') },
     { title: $r('app.string.XiaoYiYuan'), url: [{ url: 'https://hospital.ustc.edu.cn/main.htm' }], icon: $r('app.media.XiaoYiYuan') },

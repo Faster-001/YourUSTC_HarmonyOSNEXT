@@ -103,11 +103,13 @@ struct Index {
   private autoRefreshTimer: number = -1;
 
   onPageShow(): void { // 切后台回来时也执行，即使不在当前页面
+    console.log('test!!!')
     this.refreshInfo(); // 立即刷新，然后计划刷新
     this.scheduleAutoRefresh();
   }
 
   onPageHide(): void {
+    console.log('test!!!')
     if (this.autoRefreshTimer !== -1) {
       clearInterval(this.autoRefreshTimer);
     }
@@ -115,9 +117,11 @@ struct Index {
 
   private scheduleAutoRefresh(): void {
     // 计算到下一个整分钟（0秒）的延迟
+    console.log('test!!!')
     const now = new Date();
     const delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
     setTimeout(() => {
+      console.log('test!!!')
       this.refreshInfo();
       // 之后每60秒刷新一次
       this.autoRefreshTimer = setInterval(() => {
@@ -290,6 +294,7 @@ struct Index {
   private currentWeek: number = 1;
   private todayBeginTime: number = 0;
   refreshInfo() {
+    console.log('test!!!')
     this.currentTime = new Date();
     const termStartTime: number = ScheduleManager.semesters[ScheduleManager.defaultSemester].beginTime;
     this.todayBeginTime = new Date(this.currentTime).setHours(0, 0, 0, 0);
