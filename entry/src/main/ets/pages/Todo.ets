@@ -9,8 +9,7 @@ import * as ScheduleStorage from '../utils/ScheduleStorage';
 import { classAttribute } from '../constants/ScheduleSources';
 import {
   CounterComponent, CounterType,
-  SegmentButton, SegmentButtonOptions, ItemRestriction, SegmentButtonTextItem,
-  SegmentButtonItemTuple
+  SegmentButton, SegmentButtonOptions, SegmentButtonItemTuple
 } from '@kit.ArkUI';
 
 /** 提交渠道显示名，下标与 SubmitChannel 枚举值对应 */
@@ -32,16 +31,6 @@ struct TodoPage {
   @State todoList: IndexedTodoItem[] = [];
   /** 过滤类型：-1 全部，其余为 TodoType */
   @State filterType: number = -1;
-  /** 分类分段按钮选中项下标（0 全部 / 1 待办 / 2 作业），与 filterType 保持映射同步 */
-  @State filterIndexes: number[] = [0];
-  /** 分类分段按钮配置，颜色随主题在 refresh 中刷新 */
-  @State filterOptions: SegmentButtonOptions = SegmentButtonOptions.tab({
-    buttons: [{ text: '全部' }, { text: '待办' }, { text: '作业' }] as ItemRestriction<SegmentButtonTextItem>,
-    fontColor: presetColor[BackgroundImage.themeColor].accentColor,
-    selectedFontColor: '#ffffff',
-    backgroundColor: BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : '#33ffffff',
-    selectedBackgroundColor: presetColor[BackgroundImage.themeColor].accentColor
-  });
   @State showSheet: boolean = false;
   /** 正在编辑的条目原始下标，-1 表示新建 */
   @State editingIndex: number = -1;
@@ -50,6 +39,10 @@ struct TodoPage {
   @State filterCourse: string = '';
   /** 列表条目中出现过的课程名（用于过滤栏） */
   @State filterCourseNames: string[] = [];
+  /** 搜索关键词，空串表示不搜索（匹配内容与课程名，忽略大小写） */
+  @State searchText: string = '';
+  /** 状态过滤：-1 全部，0 未完成，1 已完成（作业以 done || submitted 计） */
+  @State filterStatus: number = -1;
   /** 编辑弹窗草稿：课程分类 */
   @State draftCourse: string = '';
   /** 默认学期课表中的课程名列表（去重），供快速填写 */
@@ -69,8 +62,8 @@ struct TodoPage {
     selectedBackgroundColor: presetColor[BackgroundImage.themeColor].accentColor
   });
   @State draftText: string = '';
-  @State draftBeginEnabled: boolean = false;
-  @State draftEndEnabled: boolean = false;
+  @State draftBeginDisabled: boolean = false;
+  @State draftEndDisabled: boolean = true;
   @State draftDate: string = '2026-01-01';
   @State beginHour: number = 8;
   @State beginMinute: number = 0;
@@ -78,20 +71,11 @@ struct TodoPage {
   @State endMinute: number = 0;
   @State draftChannels: boolean[] = [false, false, false, false, false];
 
-  /** 分段按钮下标 → 过滤类型 */
-  filterIndexToType(index: number): number {
-    return [-1, TodoType.Todo, TodoType.Assignment][index];
-  }
-
   refresh(): void {
     // SegmentButton 的颜色保存在 options 中，主题变化时需手动同步
     const accent = presetColor[BackgroundImage.themeColor].accentColor;
-    this.filterOptions.fontColor = accent;
-    this.filterOptions.selectedBackgroundColor = accent;
     this.draftTypeOptions.fontColor = accent;
     this.draftTypeOptions.selectedBackgroundColor = accent;
-    this.filterOptions.backgroundColor =
-      BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : '#33ffffff';
     const courseSet: string[] = [];
     getItems().forEach((item: TodoItem): void => {
       if (item.course !== undefined && item.course !== '' && !courseSet.includes(item.course)) {
@@ -102,9 +86,26 @@ struct TodoPage {
     if (this.filterCourse !== '' && !courseSet.includes(this.filterCourse)) {
       this.filterCourse = '';
     }
-    const list = filterItems((item: TodoItem): boolean =>
-      (this.filterType < 0 || item.type === this.filterType) &&
-      (this.filterCourse === '' || item.course === this.filterCourse));
+    const keyword = this.searchText.trim().toLowerCase();
+    const list = filterItems((item: TodoItem): boolean => {
+      if (this.filterType >= 0 && item.type !== this.filterType) {
+        return false;
+      }
+      if (this.filterCourse !== '' && item.course !== this.filterCourse) {
+        return false;
+      }
+      if (this.filterStatus >= 0 && (item.done || item.submitted) !== (this.filterStatus === 1)) {
+        return false;
+      }
+      if (keyword !== '') {
+        const inText = item.text.toLowerCase().includes(keyword);
+        const inCourse = (item.course ?? '').toLowerCase().includes(keyword);
+        if (!inText && !inCourse) {
+          return false;
+        }
+      }
+      return true;
+    });
     list.sort((a: IndexedTodoItem, b: IndexedTodoItem): number =>
       getEffectiveTime(a.item) - getEffectiveTime(b.item));
     this.todoList = list;
@@ -158,8 +159,8 @@ struct TodoPage {
       this.draftType = TodoType.Todo;
       this.draftText = '';
       this.draftCourse = '';
-      this.draftBeginEnabled = false;
-      this.draftEndEnabled = false;
+      this.draftBeginDisabled = true;
+      this.draftEndDisabled = true;
     } else {
       const item = indexed.item;
       this.editingIndex = indexed.index;
@@ -167,8 +168,8 @@ struct TodoPage {
       this.draftText = item.text;
       this.draftCourse = item.course ?? '';
       if (item.type === TodoType.Assignment) {
-        this.draftEndEnabled = item.ddl !== undefined;
-        this.draftBeginEnabled = false;
+        this.draftEndDisabled = item.ddl === undefined;
+        this.draftBeginDisabled = true;
         if (item.ddl !== undefined) {
           const d = new Date(item.ddl);
           this.draftDate = `${d.getFullYear()}-${this.pad2(d.getMonth() + 1)}-${this.pad2(d.getDate())}`;
@@ -179,8 +180,8 @@ struct TodoPage {
           this.draftChannels[ch] = true;
         });
       } else {
-        this.draftBeginEnabled = item.beginTime !== undefined;
-        this.draftEndEnabled = item.endTime !== undefined;
+        this.draftBeginDisabled = item.beginTime === undefined;
+        this.draftEndDisabled = item.endTime === undefined;
         if (item.beginTime !== undefined) {
           const d = new Date(item.beginTime);
           this.draftDate = `${d.getFullYear()}-${this.pad2(d.getMonth() + 1)}-${this.pad2(d.getDate())}`;
@@ -212,7 +213,7 @@ struct TodoPage {
       item.course = this.draftCourse.trim();
     }
     if (this.draftType === TodoType.Assignment) {
-      if (this.draftEndEnabled) {
+      if (!this.draftEndDisabled) {
         item.ddl = this.buildTime(this.draftDate, this.endHour, this.endMinute);
       }
       item.channels = CHANNEL_NAMES
@@ -220,10 +221,10 @@ struct TodoPage {
         .filter((ch: SubmitChannel): boolean => this.draftChannels[ch]);
       item.submitted = false;
     } else {
-      if (this.draftBeginEnabled) {
+      if (!this.draftBeginDisabled) {
         item.beginTime = this.buildTime(this.draftDate, this.beginHour, this.beginMinute);
       }
-      if (this.draftEndEnabled) {
+      if (!this.draftEndDisabled) {
         item.endTime = this.buildTime(this.draftDate, this.endHour, this.endMinute);
       }
     }
@@ -307,57 +308,40 @@ struct TodoPage {
     return parts.join('  ');
   }
 
-  @Builder
-  filterBar() {
-    Row() {
-      SegmentButton({
-        options: this.filterOptions,
-        selectedIndexes: $filterIndexes,
-        onItemClicked: (index: number) => {
-          this.filterType = this.filterIndexToType(index);
-          this.refresh();
-        }
-      })
-    }
-    .width('60%')
-    .margin({ top: 8 })
+  /** 课程筛选下拉的选项（首项为“全部课程”） */
+  filterSelectOptions(): SelectOption[] {
+    const options: SelectOption[] = [{ value: '全部课程' } as SelectOption];
+    this.filterCourseNames.forEach((name: string): void => {
+      options.push({ value: name } as SelectOption);
+    });
+    return options;
   }
 
-  @Builder
-  courseFilterBar() {
-    Scroll() {
-      Row({ space: 8 }) {
-        Text('全部')
-          .fontSize(13)
-          .fontColor(this.filterCourse === '' ? '#ffffff' :
-            presetColor[BackgroundImage.themeColor].accentColor)
-          .padding({ left: 12, right: 12, top: 4, bottom: 4 })
-          .borderRadius(12)
-          .backgroundColor(this.filterCourse === '' ?
-            presetColor[BackgroundImage.themeColor].accentColor : '#33888888')
-          .onClick(() => {
-            this.filterCourse = '';
-            this.refresh();
-          })
-        ForEach(this.filterCourseNames, (name: string) => {
-          Text(name)
-            .fontSize(13)
-            .fontColor(this.filterCourse === name ? '#ffffff' :
-              presetColor[BackgroundImage.themeColor].accentColor)
-            .padding({ left: 12, right: 12, top: 4, bottom: 4 })
-            .borderRadius(12)
-            .backgroundColor(this.filterCourse === name ?
-              presetColor[BackgroundImage.themeColor].accentColor : '#33888888')
-            .onClick(() => {
-              this.filterCourse = name;
-              this.refresh();
-            })
-        })
-      }
-    }
-    .scrollable(ScrollDirection.Horizontal)
-    .width('100%')
-    .margin({ top: 8 })
+  /** 课表课程下拉的选项（首项为“不指定课程”） */
+  courseSelectOptions(): SelectOption[] {
+    const options: SelectOption[] = [{ value: '不指定课程' } as SelectOption];
+    this.courseNames.forEach((name: string): void => {
+      options.push({ value: name } as SelectOption);
+    });
+    return options;
+  }
+
+  /** 类型筛选下拉的选项 */
+  typeSelectOptions(): SelectOption[] {
+    return [{ value: '全部类型' }, { value: '待办' },
+      { value: '作业' }] as SelectOption[];
+  }
+
+  /** 状态筛选下拉的选项 */
+  statusSelectOptions(): SelectOption[] {
+    return [{ value: '全部状态' }, { value: '未完成' },
+      { value: '已完成' }] as SelectOption[];
+  }
+
+  /** 是否启用了任意过滤/搜索条件（用于空态文案区分） */
+  hasFilterCondition(): boolean {
+    return this.searchText.trim() !== '' || this.filterType >= 0 ||
+      this.filterCourse !== '' || this.filterStatus >= 0;
   }
 
   @Builder
@@ -387,29 +371,20 @@ struct TodoPage {
         Row({ space: 6 }) {
           Text(indexed.item.type === TodoType.Assignment ? '作业' : '待办')
             .fontSize(11)
-            .fontColor('#ffffff')
             .padding({ left: 6, right: 6, top: 1, bottom: 1 })
             .borderRadius(6)
-            .backgroundColor(indexed.item.type === TodoType.Assignment ?
-              $r('app.color.hour') : $r('app.color.green'))
-          if (indexed.item.course !== undefined && indexed.item.course !== '') {
-            Text(indexed.item.course)
-              .fontSize(11)
-              .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
-              .padding({ left: 6, right: 6, top: 1, bottom: 1 })
-              .borderRadius(6)
-              .border({ width: 1, color: presetColor[BackgroundImage.themeColor].accentColor })
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.MARQUEE })
+            .backgroundColor(indexed.item.type === TodoType.Assignment ? $r('app.color.hour') : $r('app.color.green'))
+          Text() {
+            if (indexed.item.course) {
+              Span(indexed.item.course)
+              Span('：')
+            }
+            Span(indexed.item.text)
+              .decoration({
+                type: indexed.item.done ? TextDecorationType.LineThrough : TextDecorationType.None,
+                color: Color.Gray
+              })
           }
-          Text(indexed.item.text)
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .decoration({
-              type: indexed.item.done ? TextDecorationType.LineThrough : TextDecorationType.None,
-              color: Color.Gray
-            })
-            .layoutWeight(1)
         }
 
         if (this.timeDescription(indexed.item) !== '') {
@@ -446,7 +421,6 @@ struct TodoPage {
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-    .margin({ top: 8 })
     .borderRadius(16)
     .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
     .backgroundBlurStyle(BackgroundImage.blurLevel)
@@ -458,7 +432,7 @@ struct TodoPage {
     Column() {
       Row({ space: 5 }) {
         Text(this.editingIndex >= 0 ? '编辑' : '新建')
-          .fontSize(22)
+          .fontSize(24)
           .fontWeight(FontWeight.Bold)
           .layoutWeight(1)
           .margin({ left: 8 })
@@ -504,8 +478,7 @@ struct TodoPage {
         Column() {
           // 类型切换
           Row() {
-            Text('类型')
-              .width(70)
+            Text('类型：')
             Row() {
               SegmentButton({
                 options: this.draftTypeOptions,
@@ -517,75 +490,53 @@ struct TodoPage {
             }
             .layoutWeight(1)
           }
-          .margin({ bottom: 10 })
+          .margin({ bottom: 5 })
 
           // 内容
           Row() {
-            Text('内容')
-              .width(70)
-            TextInput({ text: this.draftText, placeholder: '要做的事情…' })
+            Text('内容：')
+            TextInput({ text: this.draftText })
               .layoutWeight(1)
               .onChange((input: string) => {
                 this.draftText = input;
               })
           }
-          .margin({ bottom: 10 })
+          .margin({ bottom: 5 })
 
           // 课程分类
           Row() {
-            Text('课程')
-              .width(70)
-            TextInput({ text: this.draftCourse, placeholder: '课程分类（可留空）' })
+            Text('课程：')
+            TextInput({ text: this.draftCourse })
+              .margin({ right: 5 })
               .layoutWeight(1)
               .onChange((input: string) => {
                 this.draftCourse = input;
               })
+            Select(this.courseSelectOptions())
+              .selected(this.draftCourse === '' ? 0 : this.courseNames.indexOf(this.draftCourse) + 1)
+              .value('选择课程')
+              .onSelect((index: number) => {
+                this.draftCourse = index === 0 ? '' : this.courseNames[index - 1];
+              })
           }
-          .margin({ bottom: 6 })
-
-          // 从默认学期课程快速填写
-          if (this.courseNames.length > 0) {
-            Row() {
-              Scroll() {
-                Row({ space: 8 }) {
-                  ForEach(this.courseNames, (name: string) => {
-                    Text(name)
-                      .fontSize(13)
-                      .fontColor(this.draftCourse === name ? '#ffffff' :
-                        presetColor[BackgroundImage.themeColor].accentColor)
-                      .padding({ left: 12, right: 12, top: 4, bottom: 4 })
-                      .borderRadius(12)
-                      .backgroundColor(this.draftCourse === name ?
-                        presetColor[BackgroundImage.themeColor].accentColor : '#33888888')
-                      .onClick(() => {
-                        this.draftCourse = this.draftCourse === name ? '' : name;
-                      })
-                  })
-                }
-              }
-              .scrollable(ScrollDirection.Horizontal)
-              .width('100%')
-            }
-            .margin({ bottom: 10 })
-          }
+          .margin({ bottom: 5 })
 
           if (this.draftType === TodoType.Todo) {
             // 待办：开始时间
             Row() {
-              Toggle({ type: ToggleType.Checkbox, isOn: this.draftBeginEnabled })
-                .onChange((isOn: boolean) => {
-                  this.draftBeginEnabled = isOn;
-                })
               Text('开始时间')
-                .width(60)
-              Text(this.draftDate)
-                .opacity(this.draftBeginEnabled ? 1 : 0.4)
-                .onClick(() => {
-                  if (!this.draftBeginEnabled) {
-                    return;
-                  }
-                  this.pickDate();
+                .layoutWeight(1)
+              Toggle({ type: ToggleType.Checkbox, isOn: this.draftBeginDisabled })
+                .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
+                .onChange((isOn: boolean) => {
+                  this.draftBeginDisabled = isOn;
                 })
+              Text('不选择')
+            }
+
+            Row() {
+              Text(this.draftDate)
+                .onClick(() => this.pickDate())
               CounterComponent({
                 options: {
                   type: CounterType.INLINE,
@@ -619,24 +570,24 @@ struct TodoPage {
               })
             }
             .width('100%')
-            .margin({ bottom: 10 })
+            .margin({ bottom: 5 })
+            .visibility(this.draftBeginDisabled ? Visibility.None : Visibility.Visible)
 
             // 待办：截止时间
             Row() {
-              Toggle({ type: ToggleType.Checkbox, isOn: this.draftEndEnabled })
-                .onChange((isOn: boolean) => {
-                  this.draftEndEnabled = isOn;
-                })
               Text('截止时间')
-                .width(60)
-              Text(this.draftDate)
-                .opacity(this.draftEndEnabled ? 1 : 0.4)
-                .onClick(() => {
-                  if (!this.draftEndEnabled) {
-                    return;
-                  }
-                  this.pickDate();
+                .layoutWeight(1)
+              Toggle({ type: ToggleType.Checkbox, isOn: this.draftEndDisabled })
+                .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
+                .onChange((isOn: boolean) => {
+                  this.draftEndDisabled = isOn;
                 })
+              Text('不选择')
+            }
+
+            Row() {
+              Text(this.draftDate)
+                .onClick(() => this.pickDate())
               CounterComponent({
                 options: {
                   type: CounterType.INLINE,
@@ -669,24 +620,24 @@ struct TodoPage {
                 }
               })
             }
+            .visibility(this.draftEndDisabled ? Visibility.None : Visibility.Visible)
             .width('100%')
           } else {
             // 作业：DDL
             Row() {
-              Toggle({ type: ToggleType.Checkbox, isOn: this.draftEndEnabled })
+              Text('截止时间')
+                .layoutWeight(1)
+              Toggle({ type: ToggleType.Checkbox, isOn: this.draftEndDisabled })
+                .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
                 .onChange((isOn: boolean) => {
-                  this.draftEndEnabled = isOn;
+                  this.draftEndDisabled = isOn;
                 })
-              Text('DDL')
-                .width(60)
+              Text('不选择')
+            }
+
+            Row() {
               Text(this.draftDate)
-                .opacity(this.draftEndEnabled ? 1 : 0.4)
-                .onClick(() => {
-                  if (!this.draftEndEnabled) {
-                    return;
-                  }
-                  this.pickDate();
-                })
+                .onClick(() => this.pickDate())
               CounterComponent({
                 options: {
                   type: CounterType.INLINE,
@@ -720,33 +671,37 @@ struct TodoPage {
               })
             }
             .width('100%')
-            .margin({ bottom: 10 })
+            .margin({ bottom: 5 })
+            .visibility(this.draftEndDisabled ? Visibility.None : Visibility.Visible)
 
             // 作业：提交渠道多选
             Column() {
-              Text('提交渠道（可多选）')
-                .fontSize(14)
-                .margin({ bottom: 6 })
-              Row({ space: 8 }) {
+              Text('提交渠道')
+                .margin({ bottom: 5 })
+              Flex({ wrap: FlexWrap.Wrap }) {
                 ForEach(CHANNEL_NAMES, (name: string, index: number) => {
-                  Text(name)
-                    .fontSize(13)
-                    .fontColor(this.draftChannels[index] ? '#ffffff' : presetColor[BackgroundImage.themeColor].accentColor)
-                    .padding({ left: 12, right: 12, top: 4, bottom: 4 })
-                    .borderRadius(12)
-                    .backgroundColor(this.draftChannels[index] ?
-                      presetColor[BackgroundImage.themeColor].accentColor : '#33888888')
-                    .onClick(() => {
-                      this.draftChannels[index] = !this.draftChannels[index];
-                    })
+                  Row() {
+                    Checkbox({ name: `todo_channel_${index}` })
+                      .shape(CheckBoxShape.ROUNDED_SQUARE)
+                      .select(this.draftChannels[index])
+                      .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
+                      .onChange((isOn: boolean) => {
+                        this.draftChannels[index] = isOn;
+                      })
+                    Text(name)
+                      .fontSize(14)
+                  }
+                  .margin({ right: 16, bottom: 4 })
                 })
               }
+              .width('100%')
             }
             .alignItems(HorizontalAlign.Start)
             .width('100%')
           }
         }
-        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+        .width('90%')
       }
       .align(Alignment.Top)
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
@@ -780,11 +735,60 @@ struct TodoPage {
   build() {
     NavDestination() {
       Column() {
-        this.filterBar()
+        Column({ space: 8 }) {
+          // .backgroundColor(BackgroundImage.blurLevel === undefined ? '#33888888' : '#33ffffff')
+          Row({ space: 8 }) {
+            Select(this.typeSelectOptions())
+              .selected(this.filterType + 1)
+              .value(this.filterType === -1 ? '全部类型' :
+                (this.filterType === TodoType.Todo ? '待办' : '作业'))
+              .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
+              .selectedOptionFontColor(presetColor[BackgroundImage.themeColor].accentColor)
+              .layoutWeight(1)
+              .onSelect((index: number) => {
+                this.filterType = index - 1;
+                this.refresh();
+              })
+            if (this.filterCourseNames.length > 0) {
+              Select(this.filterSelectOptions())
+                .selected(this.filterCourse === '' ? 0 : this.filterCourseNames.indexOf(this.filterCourse) + 1)
+                .value(this.filterCourse === '' ? '全部课程' : this.filterCourse)
+                .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
+                .selectedOptionFontColor(presetColor[BackgroundImage.themeColor].accentColor)
+                .layoutWeight(1)
+                .onSelect((index: number) => {
+                  this.filterCourse = index === 0 ? '' : this.filterCourseNames[index - 1];
+                  this.refresh();
+                })
+            }
+            Select(this.statusSelectOptions())
+              .selected(this.filterStatus + 1)
+              .value(this.filterStatus === -1 ? '全部状态' :
+                (this.filterStatus === 0 ? '未完成' : '已完成'))
+              .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
+              .selectedOptionFontColor(presetColor[BackgroundImage.themeColor].accentColor)
+              .layoutWeight(1)
+              .onSelect((index: number) => {
+                this.filterStatus = index - 1;
+                this.refresh();
+              })
+          }
+          .width('100%')
 
-        if (this.filterCourseNames.length > 0) {
-          this.courseFilterBar()
+          // 搜索框
+          Search({ placeholder: '搜索内容或课程' })
+            .margin(0)
+            .width('100%')
+            .onChange((input: string) => {
+              this.searchText = input;
+              this.refresh();
+            })
         }
+        .padding(8)
+        .borderRadius(28)
+        .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
+        .backgroundBlurStyle(BackgroundImage.blurLevel)
+        .width('100%')
 
         if (this.todoList.length === 0) {
           Column() {
@@ -792,7 +796,7 @@ struct TodoPage {
               .width(80)
               .draggable(false)
               .opacity(0.6)
-            Text('暂无内容，点击右上角新建')
+            Text(this.hasFilterCondition() ? '没有匹配的内容' : '暂无内容，点击右上角新建')
               .fontSize(16)
               .margin({ top: 10 })
               .fontColor($r('app.color.transparent_text'))
@@ -800,7 +804,7 @@ struct TodoPage {
           .height('70%')
           .justifyContent(FlexAlign.Center)
         } else {
-          List() {
+          List({ space: 8 }) {
             ForEach(this.todoList, (indexed: IndexedTodoItem) => {
               ListItem() {
                 this.todoCard(indexed)
@@ -808,16 +812,19 @@ struct TodoPage {
             })
           }
           .width('100%')
+          .margin({ top: 8 })
+          .borderRadius({ topLeft: 16, topRight: 16 })
           .layoutWeight(1)
           .alignListItem(ListItemAlign.Center)
           .scrollBar(BarState.Auto)
           .edgeEffect(EdgeEffect.Spring, { alwaysEnabled: false })
+          .contentEndOffset(12)
           .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
-          .padding({ left: 12, right: 12, top: 4 })
         }
       }
       .height('100%')
       .width('100%')
+      .padding({ left: 12, right: 12, top: 12 })
       .bindSheet($$this.showSheet, this.editorSheet(), {
         detents: [SheetSize.MEDIUM, SheetSize.LARGE],
         preferType: SheetType.CENTER,
@@ -827,7 +834,7 @@ struct TodoPage {
         blurStyle: BlurStyle.Regular
       })
     }
-    .title('待办与作业', {
+    .title({ main: '待办与作业', sub: '（尝鲜版）' }, {
       backgroundBlurStyle: BackgroundImage.blurLevel,
       backgroundColor: BackgroundImage.blurLevel === undefined ? BackgroundImage.titleBackgroundColor : undefined
     })
