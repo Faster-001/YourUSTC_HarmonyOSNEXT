@@ -13,7 +13,7 @@ import {
 } from '@kit.ArkUI';
 
 /** 提交渠道显示名，下标与 SubmitChannel 枚举值对应 */
-const CHANNEL_NAMES: string[] = ['BB', 'QQ', '邮箱', '线上', '线下'];
+const CHANNEL_NAMES: string[] = ['BB教学平台', 'QQ', '邮箱', '线上', '线下'];
 
 @Builder
 export function TodoBuilder(name: string, param?: object) {
@@ -368,23 +368,16 @@ struct TodoPage {
       .onClick(() => this.toggleDone(indexed))
 
       Column({ space: 3 }) {
-        Row({ space: 6 }) {
-          Text(indexed.item.type === TodoType.Assignment ? '作业' : '待办')
-            .fontSize(11)
-            .padding({ left: 6, right: 6, top: 1, bottom: 1 })
-            .borderRadius(6)
-            .backgroundColor(indexed.item.type === TodoType.Assignment ? $r('app.color.hour') : $r('app.color.green'))
-          Text() {
-            if (indexed.item.course) {
-              Span(indexed.item.course)
-              Span('：')
-            }
-            Span(indexed.item.text)
-              .decoration({
-                type: indexed.item.done ? TextDecorationType.LineThrough : TextDecorationType.None,
-                color: Color.Gray
-              })
+        Text() {
+          if (indexed.item.course) {
+            Span(indexed.item.course)
+            Span('：')
           }
+          Span(indexed.item.text)
+            .decoration({
+              type: indexed.item.done ? TextDecorationType.LineThrough : TextDecorationType.None,
+              color: Color.Gray
+            })
         }
 
         if (this.timeDescription(indexed.item) !== '') {
@@ -396,6 +389,13 @@ struct TodoPage {
 
         if (indexed.item.type === TodoType.Assignment && indexed.item.channels.length > 0) {
           Row({ space: 5 }) {
+            Text(indexed.item.type === TodoType.Assignment ? '作业' : '待办')
+              .fontSize(10)
+              .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+              .borderRadius(5)
+              .fontColor(Color.White)
+              .backgroundColor(indexed.item.type === TodoType.Assignment ? $r('app.color.hour') : $r('app.color.green'))
+
             ForEach(indexed.item.channels, (ch: SubmitChannel) => {
               Text(CHANNEL_NAMES[ch])
                 .fontSize(10)
@@ -792,17 +792,27 @@ struct TodoPage {
 
         if (this.todoList.length === 0) {
           Column() {
-            Image($r('app.media.list_square_bill'))
-              .width(80)
-              .draggable(false)
-              .opacity(0.6)
-            Text(this.hasFilterCondition() ? '没有匹配的内容' : '暂无内容，点击右上角新建')
-              .fontSize(16)
-              .margin({ top: 10 })
-              .fontColor($r('app.color.transparent_text'))
+            Column() {
+              Image($r('app.media.read_book'))
+                .width(128)
+                .interpolation(ImageInterpolation.Medium)
+                .draggable(false)
+              Text(this.hasFilterCondition() ? '没有匹配的内容' : '暂无内容，点击右上角新建')
+                .fontSize(18)
+            }
+            .justifyContent(FlexAlign.Center)
+            .backgroundBlurStyle(BackgroundImage.blurLevel)
+            .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.normal_background') : undefined)
+            .padding({
+              top: 5,
+              left: 10,
+              right: 10,
+              bottom: 10
+            })
+            .borderRadius(12);
           }
           .height('70%')
-          .justifyContent(FlexAlign.Center)
+          .justifyContent(FlexAlign.Center);
         } else {
           List({ space: 8 }) {
             ForEach(this.todoList, (indexed: IndexedTodoItem) => {
@@ -834,7 +844,7 @@ struct TodoPage {
         blurStyle: BlurStyle.Regular
       })
     }
-    .title({ main: '待办与作业', sub: '（尝鲜版）' }, {
+    .title({ main: '待办与作业', sub: '尝鲜版' }, {
       backgroundBlurStyle: BackgroundImage.blurLevel,
       backgroundColor: BackgroundImage.blurLevel === undefined ? BackgroundImage.titleBackgroundColor : undefined
     })

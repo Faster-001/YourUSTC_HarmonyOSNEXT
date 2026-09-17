@@ -100,8 +100,33 @@ struct Index {
   @State webAutoDarkMode: boolean = UnifiedPreferences.getBoolSync('webAutoDarkMode', true);
   @State webBackPress: boolean = UnifiedPreferences.getBoolSync('webBackPress', true);
   @State currentTime: Date = new Date();
+  private autoRefreshTimer: number = -1;
 
-  aboutToAppear(): void {
+  onPageShow(): void { // 切后台回来时也执行，即使不在当前页面
+    this.refreshInfo(); // 立即刷新，然后计划刷新
+    this.scheduleAutoRefresh();
+  }
+
+  onPageHide(): void {
+    if (this.autoRefreshTimer !== -1) {
+      clearInterval(this.autoRefreshTimer);
+    }
+  }
+
+  private scheduleAutoRefresh(): void {
+    // 计算到下一个整分钟（0秒）的延迟
+    const now = new Date();
+    const delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    setTimeout(() => {
+      this.refreshInfo();
+      // 之后每60秒刷新一次
+      this.autoRefreshTimer = setInterval(() => {
+        this.refreshInfo();
+      }, 60000);
+    }, delay);
+  }
+
+  aboutToAppear(): void { // 仅在 app 启动时执行
     // 保存 hostContext
     initHostContext(this.getUIContext().getHostContext() as common.UIAbilityContext);
     // 快捷方式跳转
@@ -403,20 +428,10 @@ struct Index {
       ListItem() {
         Column() {
           Row() {
-            Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
-              Image($r('app.media.refresh'))
-                .height(20)
-                .width(20)
-                .draggable(false)
-            }
-            .height(36)
-            .width(36)
-            .visibility(this.showRecentCourse ? Visibility.Visible : Visibility.Hidden)
-            .onClick(() => {
-              this.refreshInfo();
-            })
-
             Text($r('app.string.local_schedule'))
+              .textAlign(TextAlign.Center)
+              .margin({ left: 36 })
+              .layoutWeight(1)
               .fontSize(18)
               .fontWeight(FontWeight.Bold)
               .fontColor($r('app.color.normal_text'))
@@ -428,6 +443,7 @@ struct Index {
               .objectFit(ImageFit.Contain)
               .draggable(false)
           }
+          .height(52)
           .width('100%')
           .justifyContent(FlexAlign.SpaceBetween)
           .padding(8)
@@ -503,7 +519,9 @@ struct Index {
                         this.todayBeginTime + ScheduleSources.commonClassStamp[course.timeSpan[0]][0] &&
                         this.currentTime.getTime() >
                           this.todayBeginTime + ScheduleSources.commonClassStamp[course.timeSpan[0]][0] - 1800000) {
-                        Text($r('app.string.class_soon'))
+                        Text($r('app.string.class_soon',
+                          Math.ceil((this.todayBeginTime +
+                            ScheduleSources.commonClassStamp[course.timeSpan[0]][0] - this.currentTime.getTime()) / 60000)))
                           .fontColor($r('app.color.green'));
                       } else if (this.currentTime.getTime() >
                         this.todayBeginTime + ScheduleSources.commonClassStamp[course.timeSpan[0]][0] &&
@@ -628,20 +646,10 @@ struct Index {
       ListItem() {
         Column() {
           Row() {
-            Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
-              Image($r('app.media.refresh'))
-                .height(20)
-                .width(20)
-                .draggable(false)
-            }
-            .height(36)
-            .width(36)
-            .visibility(this.showExamDetail ? Visibility.Visible : Visibility.Hidden)
-            .onClick(() => {
-              this.refreshInfo();
-            });
-
             Text($r('app.string.exam_detail'))
+              .textAlign(TextAlign.Center)
+              .margin({ left: 36 })
+              .layoutWeight(1)
               .fontSize(18)
               .fontWeight(FontWeight.Bold)
               .fontColor($r('app.color.normal_text'))
@@ -653,6 +661,7 @@ struct Index {
               .objectFit(ImageFit.Contain)
               .draggable(false)
           }
+          .height(52)
           .width('100%')
           .padding(8)
           .justifyContent(FlexAlign.SpaceBetween)
@@ -742,20 +751,10 @@ struct Index {
       ListItem() {
         Column() {
           Row() {
-            Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
-              Image($r('app.media.refresh'))
-                .height(20)
-                .width(20)
-                .draggable(false)
-            }
-            .height(36)
-            .width(36)
-            .visibility(this.showExamDetail ? Visibility.Visible : Visibility.Hidden)
-            .onClick(() => {
-              this.refreshInfo();
-            });
-
             Text('待办事项')
+              .textAlign(TextAlign.Center)
+              .margin({ left: 36 })
+              .layoutWeight(1)
               .fontSize(18)
               .fontWeight(FontWeight.Bold)
               .fontColor($r('app.color.normal_text'))
@@ -767,6 +766,7 @@ struct Index {
               .objectFit(ImageFit.Contain)
               .draggable(false)
           }
+          .height(52)
           .width('100%')
           .padding(8)
           .justifyContent(FlexAlign.SpaceBetween)
@@ -789,13 +789,13 @@ struct Index {
           .fontColor($r('app.color.transparent_text'))
           .fontSize(12)
       }
-      .margin({ bottom: 87 })
     }
     .width('100%')
     .height('100%')
     .scrollBar(BarState.Auto)
     .padding({ left: 12, right: 12 })
     .margin({ top: 8 })
+    .contentEndOffset(90)
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
   }
 

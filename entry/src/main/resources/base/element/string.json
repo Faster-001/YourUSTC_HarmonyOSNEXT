@@ -674,7 +674,7 @@
     },
     {
       "name": "class_soon",
-      "value": "即将上课"
+      "value": "%d分钟后上课"
     },
     {
       "name": "class_in_session",
@@ -910,7 +910,7 @@
     },
     {
       "name": "delete_schedule",
-      "value": "删除课表"
+      "value": "删除课程表"
     },
     {
       "name": "click_again_to_delete",

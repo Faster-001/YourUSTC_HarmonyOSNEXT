@@ -36,57 +36,58 @@ struct FaultOccurred {
           .fontSize(24)
           .fontWeight(FontWeight.Bolder)
           .fontColor($r('app.color.red'));
-        Flex() {
-          Button(this.button1Text)
-            .backgroundColor($r('app.color.red'))
-            .onClick(() => {
-              this.button1ClickTimes++;
-              if (this.button1ClickTimes == 2) {
-                ScheduleStorage.clearScheduleData();
-                this.button1Text = $r('app.string.clear_success');
-              } else if (this.button1ClickTimes == 1) {
-                this.button1Text = $r('app.string.click_again_to_delete');
-              }
-            });
-          Button(this.button2Text)
-            .backgroundColor($r('app.color.red'))
-            .margin({ left: 8 })
-            .onClick(() => {
-              this.button2ClickTimes++;
-              if (this.button2ClickTimes == 2) {
-                UnifiedPreferences.clear();
-                this.button2Text = $r('app.string.clear_success');
-              } else if (this.button2ClickTimes == 1) {
-                this.button2Text = $r('app.string.click_again_to_delete');
-              }
-            });
-          Button(this.button3Text)
-            .backgroundColor($r('app.color.red'))
-            .margin({ left: 8 })
-            .onClick(() => {
-              this.button3ClickTimes++;
-              if (this.button3ClickTimes == 2) {
-                ExamStorage.clearExamData();
-                this.button3Text = $r('app.string.clear_success');
-              } else if (this.button3ClickTimes == 1) {
-                this.button3Text = $r('app.string.click_again_to_delete');
-              }
-            });
-          Button(this.button4Text)
-            .backgroundColor($r('app.color.red'))
-            .margin({ left: 8 })
-            .onClick(() => {
-              this.button4ClickTimes++;
-              if (this.button4ClickTimes == 2) {
-                TodoStorage.clearTodoData();
-                this.button4Text = $r('app.string.clear_success');
-              } else if (this.button4ClickTimes == 1) {
-                this.button4Text = $r('app.string.click_again_to_delete');
-              }
-            });
+        Column({ space: 8 }) {
+          Row({ space: 8 }) {
+            Button(this.button1Text)
+              .backgroundColor($r('app.color.red'))
+              .onClick(() => {
+                this.button1ClickTimes++;
+                if (this.button1ClickTimes == 2) {
+                  ScheduleStorage.clearScheduleData();
+                  this.button1Text = $r('app.string.clear_success');
+                } else if (this.button1ClickTimes == 1) {
+                  this.button1Text = $r('app.string.click_again_to_delete');
+                }
+              });
+            Button(this.button3Text)
+              .backgroundColor($r('app.color.red'))
+              .onClick(() => {
+                this.button3ClickTimes++;
+                if (this.button3ClickTimes == 2) {
+                  ExamStorage.clearExamData();
+                  this.button3Text = $r('app.string.clear_success');
+                } else if (this.button3ClickTimes == 1) {
+                  this.button3Text = $r('app.string.click_again_to_delete');
+                }
+              });
+          }
+          Row({ space: 8 }) {
+            Button(this.button2Text)
+              .backgroundColor($r('app.color.red'))
+              .onClick(() => {
+                this.button2ClickTimes++;
+                if (this.button2ClickTimes == 2) {
+                  UnifiedPreferences.clear();
+                  this.button2Text = $r('app.string.clear_success');
+                } else if (this.button2ClickTimes == 1) {
+                  this.button2Text = $r('app.string.click_again_to_delete');
+                }
+              });
+            Button(this.button4Text)
+              .backgroundColor($r('app.color.red'))
+              .onClick(() => {
+                this.button4ClickTimes++;
+                if (this.button4ClickTimes == 2) {
+                  TodoStorage.clearTodoData();
+                  this.button4Text = $r('app.string.clear_success');
+                } else if (this.button4ClickTimes == 1) {
+                  this.button4Text = $r('app.string.click_again_to_delete');
+                }
+              });
+          }
         }
         .borderStyle(BorderStyle.Solid)
-        .width('auto')
+        // .width('auto')
         .borderWidth(2)
         .borderColor($r('app.color.red'))
         .padding({ top: 10, bottom: 10, left: 10, right: 10 });
