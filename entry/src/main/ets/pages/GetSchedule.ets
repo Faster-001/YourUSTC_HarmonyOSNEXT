@@ -62,7 +62,7 @@ function getTimeTable() {
                 const classesOfWeek = rows[i].getElementsByTagName("td");
                 let count = 0;
                 const target = Array.from(classesOfWeek).find(elem => {
-                    if (!elem.hasAttribute("style")) { return ++count > dayNumber; }
+                    if (!elem.hasAttribute("style")) { return ++count > ((dayNumber + 1) % 7); }
                     return false;
                 })
                 const classList = Array.from(target.querySelectorAll(".c")).map(element => ({
