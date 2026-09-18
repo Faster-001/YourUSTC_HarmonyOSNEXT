@@ -617,8 +617,12 @@
       "value": "已是最近访问的 URL"
     },
     {
-      "name": "open_in_full_screen",
-      "value": "在全屏页面中打开"
+      "name": "switch_to_full_screen",
+      "value": "切换到全屏模式"
+    },
+    {
+      "name": "switch_to_split",
+      "value": "切换到分栏模式"
     },
     {
       "name": "page_forward",

@@ -2,7 +2,6 @@
   "src": [
     "pages/Index",
     "pages/FaultOccurred",
-    "pages/Webview_legacy",
     "pages/Declaration",
     "pages/UpdateLog"
   ]
