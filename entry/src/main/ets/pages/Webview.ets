@@ -57,10 +57,11 @@ struct Webview {
   tmpDialogController: undefined;
 
   aboutToDisappear() {
-    // 页面销毁时恢复进入全屏前的导航模式，保证“临时”全屏不会残留
-    if (this.modeBeforeFullScreen !== undefined) {
-      this.adaptSplit = this.modeBeforeFullScreen;
-      this.modeBeforeFullScreen = undefined;
+    // 仅当最后一个 Webview 页面销毁（已无打开的网页）时才恢复全屏前的导航模式，
+    // 避免多页面共存时关闭其中一个意外退出全屏
+    if (this.savedSizeMode !== -1 && webName.length === 0) {
+      this.adaptSplit = this.savedSizeMode as NavigationMode;
+      this.savedSizeMode = -1;
     }
   }
 
@@ -78,8 +79,9 @@ struct Webview {
   @StorageLink('isSplit')isSplit: NavigationMode = NavigationMode.Auto;
   // 导航模式偏好：临时改写此值即可让当前页面在全屏/分栏间切换（Index 的 .mode() 绑定此键）
   @StorageLink('adaptSplit') adaptSplit: NavigationMode = NavigationMode.Auto;
-  // 进入全屏前记录的导航模式，页面销毁时用于恢复；undefined 表示当前未处于临时全屏状态
-  private modeBeforeFullScreen: NavigationMode | undefined = undefined;
+  // 临时全屏前记录的导航模式（全局共享，-1 表示未处于临时全屏）：
+  // 多个 Webview 页面共存时需统一读取，故用 @StorageLink 而非实例字段，避免各页面状态不一致
+  @StorageLink('webFullScreenSavedMode') savedSizeMode: number = -1;
   @State allowSysOpen: boolean = true;
   @Builder WebviewMenu() {
     Menu() {
@@ -128,22 +130,22 @@ struct Webview {
         })
 
       MenuItem({
-        content: this.modeBeforeFullScreen !== undefined
+        content: this.savedSizeMode !== -1
           ? $r('app.string.switch_to_split')
           : $r('app.string.switch_to_full_screen'),
-        startIcon: this.modeBeforeFullScreen !== undefined
+        startIcon: this.savedSizeMode !== -1
           ? $r('app.media.arrow_down_right_and_arrow_up_left')
           : $r('app.media.arrow_up_left_and_arrow_down_right')
       })
-        .enabled(this.isSplit === NavigationMode.Split || this.modeBeforeFullScreen !== undefined)
+        .enabled(this.isSplit === NavigationMode.Split || this.savedSizeMode !== -1)
         .onClick(() => {
-          if (this.modeBeforeFullScreen !== undefined) {
+          if (this.savedSizeMode !== -1) {
             // 已在临时全屏：恢复进入前的导航模式，退出全屏
-            this.adaptSplit = this.modeBeforeFullScreen;
-            this.modeBeforeFullScreen = undefined;
+            this.adaptSplit = this.savedSizeMode as NavigationMode;
+            this.savedSizeMode = -1;
           } else {
             // 未在全屏：记录当前模式并临时切换为单栏堆叠，使本页面直接占满全屏
-            this.modeBeforeFullScreen = this.adaptSplit;
+            this.savedSizeMode = this.adaptSplit as number;
             this.adaptSplit = NavigationMode.Stack;
           }
         })
