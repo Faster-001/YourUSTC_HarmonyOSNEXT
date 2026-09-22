@@ -43,6 +43,8 @@ struct TodoPage {
   @State searchText: string = '';
   /** 状态过滤：-1 全部，0 未完成，1 已完成（作业以 done || submitted 计） */
   @State filterStatus: number = -1;
+  /** 是否展示筛选栏（类型/课程/状态下拉），搜索框常驻 */
+  @State showFilter: boolean = true;
   /** 编辑弹窗草稿：课程分类 */
   @State draftCourse: string = '';
   /** 默认学期课表中的课程名列表（去重），供快速填写 */
@@ -64,7 +66,8 @@ struct TodoPage {
   @State draftText: string = '';
   @State draftBeginDisabled: boolean = false;
   @State draftEndDisabled: boolean = true;
-  @State draftDate: string = '2026-01-01';
+  @State draftBeginDate: string = '2026-01-01';
+  @State draftEndDate: string = '2026-01-01';
   @State beginHour: number = 8;
   @State beginMinute: number = 0;
   @State endHour: number = 22;
@@ -148,7 +151,9 @@ struct TodoPage {
   /** 打开新建/编辑弹窗 */
   openEditor(indexed?: IndexedTodoItem): void {
     const today = new Date();
-    this.draftDate = `${today.getFullYear()}-${this.pad2(today.getMonth() + 1)}-${this.pad2(today.getDate())}`;
+    const todayStr = `${today.getFullYear()}-${this.pad2(today.getMonth() + 1)}-${this.pad2(today.getDate())}`;
+    this.draftBeginDate = todayStr;
+    this.draftEndDate = todayStr;
     this.beginHour = today.getHours();
     this.beginMinute = 0;
     this.endHour = today.getHours() + 2 > 23 ? 23 : today.getHours() + 2;
@@ -172,7 +177,7 @@ struct TodoPage {
         this.draftBeginDisabled = true;
         if (item.ddl !== undefined) {
           const d = new Date(item.ddl);
-          this.draftDate = `${d.getFullYear()}-${this.pad2(d.getMonth() + 1)}-${this.pad2(d.getDate())}`;
+          this.draftEndDate = `${d.getFullYear()}-${this.pad2(d.getMonth() + 1)}-${this.pad2(d.getDate())}`;
           this.endHour = d.getHours();
           this.endMinute = d.getMinutes();
         }
@@ -184,13 +189,13 @@ struct TodoPage {
         this.draftEndDisabled = item.endTime === undefined;
         if (item.beginTime !== undefined) {
           const d = new Date(item.beginTime);
-          this.draftDate = `${d.getFullYear()}-${this.pad2(d.getMonth() + 1)}-${this.pad2(d.getDate())}`;
+          this.draftBeginDate = `${d.getFullYear()}-${this.pad2(d.getMonth() + 1)}-${this.pad2(d.getDate())}`;
           this.beginHour = d.getHours();
           this.beginMinute = d.getMinutes();
         }
         if (item.endTime !== undefined) {
           const d = new Date(item.endTime);
-          this.draftDate = `${d.getFullYear()}-${this.pad2(d.getMonth() + 1)}-${this.pad2(d.getDate())}`;
+          this.draftEndDate = `${d.getFullYear()}-${this.pad2(d.getMonth() + 1)}-${this.pad2(d.getDate())}`;
           this.endHour = d.getHours();
           this.endMinute = d.getMinutes();
         }
@@ -214,7 +219,7 @@ struct TodoPage {
     }
     if (this.draftType === TodoType.Assignment) {
       if (!this.draftEndDisabled) {
-        item.ddl = this.buildTime(this.draftDate, this.endHour, this.endMinute);
+        item.ddl = this.buildTime(this.draftEndDate, this.endHour, this.endMinute);
       }
       item.channels = CHANNEL_NAMES
         .map((_: string, i: number): SubmitChannel => i as SubmitChannel)
@@ -222,19 +227,41 @@ struct TodoPage {
       item.submitted = false;
     } else {
       if (!this.draftBeginDisabled) {
-        item.beginTime = this.buildTime(this.draftDate, this.beginHour, this.beginMinute);
+        item.beginTime = this.buildTime(this.draftBeginDate, this.beginHour, this.beginMinute);
       }
       if (!this.draftEndDisabled) {
-        item.endTime = this.buildTime(this.draftDate, this.endHour, this.endMinute);
+        item.endTime = this.buildTime(this.draftEndDate, this.endHour, this.endMinute);
       }
     }
     return item;
+  }
+
+  /** 校验开始时间不晚于截止时间，违反时将二者互换（日期、时、分） */
+  normalizeDraftTimes(): void {
+    if (this.draftType !== TodoType.Todo ||
+      this.draftBeginDisabled || this.draftEndDisabled) {
+      return;
+    }
+    const begin = this.buildTime(this.draftBeginDate, this.beginHour, this.beginMinute);
+    const end = this.buildTime(this.draftEndDate, this.endHour, this.endMinute);
+    if (begin > end) {
+      const tmpDate = this.draftBeginDate;
+      const tmpHour = this.beginHour;
+      const tmpMinute = this.beginMinute;
+      this.draftBeginDate = this.draftEndDate;
+      this.beginHour = this.endHour;
+      this.beginMinute = this.endMinute;
+      this.draftEndDate = tmpDate;
+      this.endHour = tmpHour;
+      this.endMinute = tmpMinute;
+    }
   }
 
   saveDraft(): void {
     if (this.draftText.trim() === '') {
       return;
     }
+    this.normalizeDraftTimes();
     const newItem = this.buildDraftItem();
     if (this.editingIndex >= 0) {
       updateItem(this.editingIndex, newItem);
@@ -347,25 +374,19 @@ struct TodoPage {
   @Builder
   todoCard(indexed: IndexedTodoItem) {
     Row({ space: 10 }) {
-      // 完成/提交状态圆圈
-      Stack() {
-        Circle()
-          .width(24)
-          .height(24)
-          .fill('#0000')
-          .stroke(indexed.item.done || indexed.item.submitted ?
-            presetColor[BackgroundImage.themeColor].accentColor : '#66888888')
-          .strokeWidth(2)
-        if (indexed.item.done || indexed.item.submitted) {
-          Image($r('app.media.checkmark'))
-            .width(14)
-            .height(14)
-            .draggable(false)
-        }
+      // 完成状态开关按钮
+      Toggle({ type: ToggleType.BUTTON, isOn: indexed.item.done }) {
+        Text('完成')
+          .fontSize(12)
       }
-      .width(28)
+      .width(56)
       .height(28)
-      .onClick(() => this.toggleDone(indexed))
+      .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
+      .onChange((isOn: boolean) => {
+        if (isOn !== indexed.item.done) {
+          this.toggleDone(indexed);
+        }
+      })
 
       Column({ space: 3 }) {
         Text() {
@@ -408,10 +429,17 @@ struct TodoPage {
                 })
             })
             Blank()
-            Text(indexed.item.submitted ? '已提交' : '未提交')
-              .fontSize(11)
-              .fontColor(indexed.item.submitted ? $r('app.color.green') : $r('app.color.hour'))
-              .onClick(() => this.toggleSubmitted(indexed))
+            Toggle({ type: ToggleType.BUTTON, isOn: indexed.item.submitted }) {
+              Text('提交')
+                .fontSize(11)
+            }
+            .height(24)
+            .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
+            .onChange((isOn: boolean) => {
+              if (isOn !== indexed.item.submitted) {
+                this.toggleSubmitted(indexed);
+              }
+            })
           }
           .width('100%')
         }
@@ -535,8 +563,8 @@ struct TodoPage {
             }
 
             Row() {
-              Text(this.draftDate)
-                .onClick(() => this.pickDate())
+              Text(this.draftBeginDate)
+                .onClick(() => this.pickDate(false))
               CounterComponent({
                 options: {
                   type: CounterType.INLINE,
@@ -586,8 +614,8 @@ struct TodoPage {
             }
 
             Row() {
-              Text(this.draftDate)
-                .onClick(() => this.pickDate())
+              Text(this.draftEndDate)
+                .onClick(() => this.pickDate(true))
               CounterComponent({
                 options: {
                   type: CounterType.INLINE,
@@ -636,8 +664,8 @@ struct TodoPage {
             }
 
             Row() {
-              Text(this.draftDate)
-                .onClick(() => this.pickDate())
+              Text(this.draftEndDate)
+                .onClick(() => this.pickDate(true))
               CounterComponent({
                 options: {
                   type: CounterType.INLINE,
@@ -711,13 +739,20 @@ struct TodoPage {
     .padding({ top: 16, left: 16, right: 16 })
   }
 
-  pickDate(): void {
-    const parts = this.draftDate.split('-');
+  /** target 为 true 时修改截止日期，false 时修改开始日期 */
+  pickDate(target: boolean): void {
+    const current = target ? this.draftEndDate : this.draftBeginDate;
+    const parts = current.split('-');
     DatePickerDialog.show({
       selected: new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])),
       onDateAccept: (value: Date) => {
-        this.draftDate =
+        const picked =
           `${value.getFullYear()}-${this.pad2(value.getMonth() + 1)}-${this.pad2(value.getDate())}`;
+        if (target) {
+          this.draftEndDate = picked;
+        } else {
+          this.draftBeginDate = picked;
+        }
       }
     });
   }
@@ -736,53 +771,66 @@ struct TodoPage {
     NavDestination() {
       Column() {
         Column({ space: 8 }) {
-          // .backgroundColor(BackgroundImage.blurLevel === undefined ? '#33888888' : '#33ffffff')
+          // 搜索框 + 筛选栏开关
           Row({ space: 8 }) {
-            Select(this.typeSelectOptions())
-              .selected(this.filterType + 1)
-              .value(this.filterType === -1 ? '全部类型' :
-                (this.filterType === TodoType.Todo ? '待办' : '作业'))
-              .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
-              .selectedOptionFontColor(presetColor[BackgroundImage.themeColor].accentColor)
+            Search({ placeholder: '搜索内容或课程' })
+              .margin(0)
               .layoutWeight(1)
-              .onSelect((index: number) => {
-                this.filterType = index - 1;
+              .onChange((input: string) => {
+                this.searchText = input;
                 this.refresh();
               })
-            if (this.filterCourseNames.length > 0) {
-              Select(this.filterSelectOptions())
-                .selected(this.filterCourse === '' ? 0 : this.filterCourseNames.indexOf(this.filterCourse) + 1)
-                .value(this.filterCourse === '' ? '全部课程' : this.filterCourse)
+            Toggle({ type: ToggleType.BUTTON, isOn: this.showFilter }) {
+              Text('筛选')
+                .fontSize(13)
+            }
+            .height(40)
+            .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
+            .onChange((isOn: boolean) => {
+              this.showFilter = isOn;
+            })
+          }
+          .width('100%')
+
+          if (this.showFilter) {
+            Row({ space: 8 }) {
+              Select(this.typeSelectOptions())
+                .selected(this.filterType + 1)
+                .value(this.filterType === -1 ? '全部类型' :
+                  (this.filterType === TodoType.Todo ? '待办' : '作业'))
                 .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
                 .selectedOptionFontColor(presetColor[BackgroundImage.themeColor].accentColor)
                 .layoutWeight(1)
                 .onSelect((index: number) => {
-                  this.filterCourse = index === 0 ? '' : this.filterCourseNames[index - 1];
+                  this.filterType = index - 1;
+                  this.refresh();
+                })
+              if (this.filterCourseNames.length > 0) {
+                Select(this.filterSelectOptions())
+                  .selected(this.filterCourse === '' ? 0 : this.filterCourseNames.indexOf(this.filterCourse) + 1)
+                  .value(this.filterCourse === '' ? '全部课程' : this.filterCourse)
+                  .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
+                  .selectedOptionFontColor(presetColor[BackgroundImage.themeColor].accentColor)
+                  .layoutWeight(1)
+                  .onSelect((index: number) => {
+                    this.filterCourse = index === 0 ? '' : this.filterCourseNames[index - 1];
+                    this.refresh();
+                  })
+              }
+              Select(this.statusSelectOptions())
+                .selected(this.filterStatus + 1)
+                .value(this.filterStatus === -1 ? '全部状态' :
+                  (this.filterStatus === 0 ? '未完成' : '已完成'))
+                .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
+                .selectedOptionFontColor(presetColor[BackgroundImage.themeColor].accentColor)
+                .layoutWeight(1)
+                .onSelect((index: number) => {
+                  this.filterStatus = index - 1;
                   this.refresh();
                 })
             }
-            Select(this.statusSelectOptions())
-              .selected(this.filterStatus + 1)
-              .value(this.filterStatus === -1 ? '全部状态' :
-                (this.filterStatus === 0 ? '未完成' : '已完成'))
-              .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
-              .selectedOptionFontColor(presetColor[BackgroundImage.themeColor].accentColor)
-              .layoutWeight(1)
-              .onSelect((index: number) => {
-                this.filterStatus = index - 1;
-                this.refresh();
-              })
-          }
-          .width('100%')
-
-          // 搜索框
-          Search({ placeholder: '搜索内容或课程' })
-            .margin(0)
             .width('100%')
-            .onChange((input: string) => {
-              this.searchText = input;
-              this.refresh();
-            })
+          }
         }
         .padding(8)
         .borderRadius(28)
