@@ -10,6 +10,8 @@ import examManager from '../utils/ExamManager';
 import * as ExamStorage from '../utils/ExamStorage';
 import UnifiedPreferences, { millisecondsPerWeek } from '../utils/UnifyPreference';
 import { i18n } from '@kit.LocalizationKit';
+import * as TodoStorage from '../utils/TodoStorage';
+import { TodoCardItem } from '../todo_info/viewmodel/TodoCardItem';
 
 const TAG: string = 'EntryFormAbility';
 const DOMAIN_NUMBER: number = 0xFF00;
@@ -20,6 +22,7 @@ class FormDataClass {
   title: ResourceStr = '';
   count: number = 0;
   examInfo: examAttribute[] = [];
+  todoList: TodoCardItem[] = [];
   lastRefresh: string = '';
   currentTime: number = 0;
   constructor(refreshType: number) {
@@ -56,8 +59,46 @@ class FormDataClass {
       examManager.readStoredExam();
       this.examInfo = examManager.allExamInfo.filter(item => this.currentTime <= item.endTimeStamp);
       this.count = this.examInfo.length;
+    } else if (refreshType === 2) { // 2 → 刷新待办
+      this.title = $r("app.string.todo_card_title");
+      const unfinished = TodoStorage.getUnfinished();
+      unfinished.sort((a, b) => TodoStorage.getEffectiveTime(a.item) - TodoStorage.getEffectiveTime(b.item));
+      this.todoList = unfinished.map((entry: TodoStorage.IndexedTodoItem): TodoCardItem => {
+        const item = entry.item;
+        return {
+          text: (item.course ? item.course + '：' : '') + item.text,
+          timeDesc: this.todoTimeDescription(item),
+          overdue: TodoStorage.getEffectiveTime(item) <= this.currentTime,
+          priority: item.priority ?? 0,
+          isAssignment: item.type === TodoStorage.TodoType.Assignment,
+          done: item.done
+        } as TodoCardItem;
+      });
+      this.count = this.todoList.length;
     }
     this.lastRefresh = '上次刷新: ' + currentTime.toLocaleString('zh-cn', { month: 'short', day: 'numeric', hour: '2-digit', minute: 'numeric', hourCycle: i18n.System.is24HourClock() ? 'h23' : 'h12' });
+  }
+
+  /** 毫秒时间戳 → 'M-d HH:mm'（与 Todo 页面保持一致） */
+  private todoFormatTime(ts: number): string {
+    const d = new Date(ts);
+    const pad = (n: number): string => (n < 10 ? '0' + n : '' + n);
+    return `${d.getMonth() + 1}-${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  /** 条目的时间描述文本（与 Todo 页面保持一致） */
+  private todoTimeDescription(item: TodoStorage.TodoItem): string {
+    if (item.type === TodoStorage.TodoType.Assignment) {
+      return item.ddl !== undefined ? `DDL ${this.todoFormatTime(item.ddl)}` : '';
+    }
+    const parts: string[] = [];
+    if (item.beginTime !== undefined) {
+      parts.push(`始 ${this.todoFormatTime(item.beginTime)}`);
+    }
+    if (item.endTime !== undefined) {
+      parts.push(`止 ${this.todoFormatTime(item.endTime)}`);
+    }
+    return parts.join('  ');
   }
 }
 
@@ -67,15 +108,18 @@ export default class EntryFormAbility extends FormExtensionAbility {
     UnifiedPreferences.init(this.context);
     ScheduleStorage.init(this.context);
     ExamStorage.init(this.context);
+    TodoStorage.init(this.context);
     // console.log(JSON.stringify(want.parameters))
 
-    if (want.parameters![formInfo.FormParam.NAME_KEY].toString() === 'class_schedule_daily') {
-      UnifiedPreferences.putSync('CardType_id' + want.parameters![formInfo.FormParam.IDENTITY_KEY], 0);
-      return formBindingData.createFormBindingData(new FormDataClass(0));
-    } else {
-      UnifiedPreferences.putSync('CardType_id' + want.parameters![formInfo.FormParam.IDENTITY_KEY], 1);
-      return formBindingData.createFormBindingData(new FormDataClass(1));
+    const formName: string = want.parameters![formInfo.FormParam.NAME_KEY].toString();
+    let formType: number = 1;
+    if (formName === 'class_schedule_daily') {
+      formType = 0;
+    } else if (formName === 'todo_info') {
+      formType = 2;
     }
+    UnifiedPreferences.putSync('CardType_id' + want.parameters![formInfo.FormParam.IDENTITY_KEY], formType);
+    return formBindingData.createFormBindingData(new FormDataClass(formType));
   }
 
   onCastToNormalForm(formId: string) {
@@ -91,6 +135,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
     UnifiedPreferences.init(this.context);
     ScheduleStorage.init(this.context);
     ExamStorage.init(this.context);
+    TodoStorage.init(this.context);
     const formType: number = UnifiedPreferences.getNumberSync('CardType_id' + formId, -1);
 
     if (formType !== -1) {
@@ -111,8 +156,10 @@ export default class EntryFormAbility extends FormExtensionAbility {
     UnifiedPreferences.init(this.context);
     ScheduleStorage.init(this.context);
     ExamStorage.init(this.context);
+    TodoStorage.init(this.context);
     const eventSource: string = JSON.parse(message).msgTest;
-    let formData = new FormDataClass(eventSource === 'schedule' ? 0 : 1);
+    const refreshType: number = eventSource === 'schedule' ? 0 : (eventSource === 'todo' ? 2 : 1);
+    let formData = new FormDataClass(refreshType);
 
     formProvider.updateForm(formId, formBindingData.createFormBindingData(formData)).then(() => {
       hilog.info(DOMAIN_NUMBER, TAG, 'FormAbility updateForm success.');

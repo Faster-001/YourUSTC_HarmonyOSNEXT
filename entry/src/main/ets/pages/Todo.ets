@@ -442,7 +442,7 @@ struct TodoPage {
   todoCard(indexed: IndexedTodoItem) {
     Row({ space: 10 }) {
       // 完成状态开关按钮
-      Toggle({ type: ToggleType.BUTTON, isOn: indexed.item.done }) {
+      Toggle({ type: ToggleType.Button, isOn: indexed.item.done }) {
         Text('完成')
           .fontSize(12)
       }
@@ -506,7 +506,7 @@ struct TodoPage {
                   })
               })
               Blank()
-              Toggle({ type: ToggleType.BUTTON, isOn: indexed.item.submitted }) {
+              Toggle({ type: ToggleType.Button, isOn: indexed.item.submitted }) {
                 Text('提交')
                   .fontSize(11)
               }
@@ -948,7 +948,7 @@ struct TodoPage {
                 this.searchText = input;
                 this.refresh();
               })
-            Toggle({ type: ToggleType.BUTTON, isOn: this.showFilter }) {
+            Toggle({ type: ToggleType.Button, isOn: this.showFilter }) {
               Text('筛选')
                 .fontSize(13)
             }

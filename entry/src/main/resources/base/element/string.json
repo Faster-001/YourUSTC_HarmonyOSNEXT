@@ -1139,6 +1139,22 @@
     {
       "name": "exam_info_display_name",
       "value": "考试信息"
+    },
+    {
+      "name": "todo_info_desc",
+      "value": "显示未完成的待办与作业"
+    },
+    {
+      "name": "todo_info_display_name",
+      "value": "待办清单"
+    },
+    {
+      "name": "todo_card_title",
+      "value": "待办事项"
+    },
+    {
+      "name": "no_todo_info",
+      "value": "暂无待办"
     }
   ]
 }
