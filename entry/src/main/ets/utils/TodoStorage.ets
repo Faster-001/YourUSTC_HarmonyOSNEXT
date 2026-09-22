@@ -47,7 +47,11 @@ export interface TodoItem {
   /** 是否已提交，仅作业类型有意义 */
   submitted: boolean,
   /** 已提交的渠道列表（可多选），仅作业类型有意义 */
-  channels: SubmitChannel[]
+  channels: SubmitChannel[],
+  /** 重要度 0-10，数值越大越重要；可省略表示未设置（默认按 5 处理） */
+  priority?: number,
+  /** 附图在应用私有目录中的绝对路径列表；可省略或空数组表示无附图 */
+  imagePaths?: string[]
 }
 
 /** 过滤/排序结果：index 为条目在原始数组中的下标 */
@@ -59,7 +63,13 @@ export interface IndexedTodoItem {
 /** 未设置时间的条目在升序排序中排到最后 */
 const UNSET_TIME = Number.MAX_SAFE_INTEGER;
 
+/** 未设置重要度时采用的默认值，与课表模块保持一致 */
+export const DEFAULT_PRIORITY = 5;
+/** 重要度取值上限（Slider 0-10） */
+export const MAX_PRIORITY = 10;
+
 let todoFilePath: string = '';
+let todoImageDir: string = '';
 let todoCache: TodoItem[] | null = null;
 
 /**
@@ -68,7 +78,48 @@ let todoCache: TodoItem[] | null = null;
  */
 export function init(context: Context): void {
   todoFilePath = `${context.filesDir}/todoData.json`;
+  todoImageDir = `${context.filesDir}/todoImages`;
+  try {
+    if (!fileIo.accessSync(todoImageDir)) {
+      fileIo.mkdirSync(todoImageDir);
+    }
+  } catch (e) {
+    console.error('TodoStorage: failed to create image dir:', JSON.stringify(e));
+  }
   loadTodo();
+}
+
+/**
+ * 将外部图片（相册选取后得到的文件路径）复制到应用私有目录。
+ * @param srcPath 源图片的文件系统路径
+ * @returns 复制后的私有目录绝对路径；失败返回空串
+ */
+export function importImage(srcPath: string): string {
+  if (srcPath === '') {
+    return '';
+  }
+  try {
+    const dest = `${todoImageDir}/todo_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+    fileIo.copyFileSync(srcPath, dest);
+    return dest;
+  } catch (e) {
+    console.error('TodoStorage: failed to import image:', JSON.stringify(e));
+    return '';
+  }
+}
+
+/** 删除私有目录中的附图文件；路径为空或文件不存在时静默忽略 */
+export function deleteImage(path: string): void {
+  if (path === '') {
+    return;
+  }
+  try {
+    if (fileIo.accessSync(path)) {
+      fileIo.unlinkSync(path);
+    }
+  } catch (e) {
+    console.error('TodoStorage: failed to delete image:', JSON.stringify(e));
+  }
 }
 
 function loadTodo(): TodoItem[] {
@@ -116,22 +167,33 @@ export function addItem(item: TodoItem): void {
   flushTodo();
 }
 
-/** 按数组下标更新一条待办/作业；下标越界时静默忽略 */
+/** 按数组下标更新一条待办/作业；下标越界时静默忽略。清理不再引用的旧附图文件 */
 export function updateItem(index: number, item: TodoItem): void {
   const data = loadTodo();
   if (index < 0 || index >= data.length) {
     return;
   }
+  const old = data[index];
+  if (old.imagePaths !== undefined) {
+    const kept = item.imagePaths ?? [];
+    old.imagePaths.forEach((path: string): void => {
+      if (!kept.includes(path)) {
+        deleteImage(path);
+      }
+    });
+  }
   data[index] = item;
   flushTodo();
 }
 
-/** 按数组下标删除一条待办/作业；下标越界时静默忽略。删除后其余条目下标前移 */
+/** 按数组下标删除一条待办/作业；下标越界时静默忽略。删除后其余条目下标前移，同时清理其附图 */
 export function removeItem(index: number): void {
   const data = loadTodo();
   if (index < 0 || index >= data.length) {
     return;
   }
+  const removed = data[index];
+  removed.imagePaths?.forEach((path: string): void => deleteImage(path));
   data.splice(index, 1);
   flushTodo();
 }

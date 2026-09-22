@@ -2,11 +2,14 @@ import BackgroundImage, { presetColor } from '../utils/BgImageManager';
 import MessageDialog from '../view/MessageDialog';
 import {
   TodoItem, TodoType, SubmitChannel, IndexedTodoItem, getItems,
-  addItem, updateItem, removeItem, filterItems, getEffectiveTime
+  addItem, updateItem, removeItem, filterItems, getEffectiveTime,
+  importImage, DEFAULT_PRIORITY, MAX_PRIORITY
 } from '../utils/TodoStorage';
 import ScheduleManager from '../utils/Classes/ScheduleManager';
 import * as ScheduleStorage from '../utils/ScheduleStorage';
 import { classAttribute } from '../constants/ScheduleSources';
+import { photoAccessHelper } from '@kit.MediaLibraryKit';
+import { fileUri } from '@kit.CoreFileKit';
 import {
   CounterComponent, CounterType,
   SegmentButton, SegmentButtonOptions, SegmentButtonItemTuple
@@ -73,6 +76,12 @@ struct TodoPage {
   @State endHour: number = 22;
   @State endMinute: number = 0;
   @State draftChannels: boolean[] = [false, false, false, false, false];
+  /** 编辑弹窗草稿：重要度 0-10 */
+  @State draftPriority: number = DEFAULT_PRIORITY;
+  /** 编辑弹窗草稿：已保存的附图私有路径列表 */
+  @State draftImagePaths: string[] = [];
+  /** 编辑弹窗草稿：本次新选取、尚未导入的相册图片 uri 列表 */
+  @State draftImagePendingUris: string[] = [];
 
   refresh(): void {
     // SegmentButton 的颜色保存在 options 中，主题变化时需手动同步
@@ -159,6 +168,7 @@ struct TodoPage {
     this.endHour = today.getHours() + 2 > 23 ? 23 : today.getHours() + 2;
     this.endMinute = 0;
     this.draftChannels = [false, false, false, false, false];
+    this.draftImagePendingUris = [];
     if (indexed === undefined) {
       this.editingIndex = -1;
       this.draftType = TodoType.Todo;
@@ -166,12 +176,16 @@ struct TodoPage {
       this.draftCourse = '';
       this.draftBeginDisabled = true;
       this.draftEndDisabled = true;
+      this.draftPriority = DEFAULT_PRIORITY;
+      this.draftImagePaths = [];
     } else {
       const item = indexed.item;
       this.editingIndex = indexed.index;
       this.draftType = item.type;
       this.draftText = item.text;
       this.draftCourse = item.course ?? '';
+      this.draftPriority = item.priority ?? DEFAULT_PRIORITY;
+      this.draftImagePaths = (item.imagePaths ?? []).slice();
       if (item.type === TodoType.Assignment) {
         this.draftEndDisabled = item.ddl === undefined;
         this.draftBeginDisabled = true;
@@ -232,6 +246,18 @@ struct TodoPage {
       if (!this.draftEndDisabled) {
         item.endTime = this.buildTime(this.draftEndDate, this.endHour, this.endMinute);
       }
+    }
+    item.priority = this.draftPriority;
+    // 附图：已保存的路径 + 本次新选取（保存时导入私有目录）
+    const paths: string[] = this.draftImagePaths.slice();
+    this.draftImagePendingUris.forEach((uri: string): void => {
+      const imported = importImage(new fileUri.FileUri(uri).path);
+      if (imported !== '') {
+        paths.push(imported);
+      }
+    });
+    if (paths.length > 0) {
+      item.imagePaths = paths;
     }
     return item;
   }
@@ -301,7 +327,9 @@ struct TodoPage {
       ddl: item.ddl,
       done: item.done,
       submitted: item.submitted,
-      channels: item.channels
+      channels: item.channels,
+      priority: item.priority,
+      imagePaths: item.imagePaths?.slice()
     } as TodoItem;
   }
 
@@ -318,6 +346,45 @@ struct TodoPage {
     item.submitted = !item.submitted;
     updateItem(indexed.index, item);
     this.refresh();
+  }
+
+  /** 选取相册图片作为附图（可多选）；不立即复制，保存草稿时才导入私有目录 */
+  async pickImage(): Promise<void> {
+    try {
+      const options = new photoAccessHelper.PhotoSelectOptions();
+      options.MIMEType = photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE;
+      options.maxSelectNumber = 9;
+      const picker = new photoAccessHelper.PhotoViewPicker();
+      const result = await picker.select(options);
+      if (result.photoUris.length > 0) {
+        this.draftImagePendingUris = this.draftImagePendingUris.concat(result.photoUris);
+      }
+    } catch (e) {
+      console.error('Todo: pickImage failed:', JSON.stringify(e));
+    }
+  }
+
+  /** 移除一张本次新选取、尚未保存的附图 */
+  removePendingImage(index: number): void {
+    this.draftImagePendingUris =
+      this.draftImagePendingUris.filter((_: string, i: number): boolean => i !== index);
+  }
+
+  /** 移除一张已保存的附图；对应文件在 updateItem 时清理 */
+  removeSavedImage(index: number): void {
+    this.draftImagePaths =
+      this.draftImagePaths.filter((_: string, i: number): boolean => i !== index);
+  }
+
+  /** 重要度对应的徽章底色，数值越高越醒目 */
+  priorityColor(priority: number): Resource {
+    if (priority >= 7) {
+      return $r('app.color.minute');
+    }
+    if (priority >= 4) {
+      return $r('app.color.hour');
+    }
+    return $r('app.color.green');
   }
 
   /** 条目的时间描述文本 */
@@ -408,38 +475,64 @@ struct TodoPage {
               $r('app.color.minute') : $r('app.color.transparent_text'))
         }
 
-        if (indexed.item.type === TodoType.Assignment && indexed.item.channels.length > 0) {
+        if ((indexed.item.priority !== undefined && indexed.item.priority > 0) ||
+          (indexed.item.type === TodoType.Assignment && indexed.item.channels.length > 0)) {
           Row({ space: 5 }) {
-            Text(indexed.item.type === TodoType.Assignment ? '作业' : '待办')
-              .fontSize(10)
-              .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-              .borderRadius(5)
-              .fontColor(Color.White)
-              .backgroundColor(indexed.item.type === TodoType.Assignment ? $r('app.color.hour') : $r('app.color.green'))
-
-            ForEach(indexed.item.channels, (ch: SubmitChannel) => {
-              Text(CHANNEL_NAMES[ch])
+            if (indexed.item.priority !== undefined && indexed.item.priority > 0) {
+              Text(`重要度 ${indexed.item.priority}`)
                 .fontSize(10)
-                .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
-                .padding({ left: 5, right: 5, top: 1, bottom: 1 })
+                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
                 .borderRadius(5)
-                .border({
-                  width: 1,
-                  color: presetColor[BackgroundImage.themeColor].accentColor
-                })
-            })
-            Blank()
-            Toggle({ type: ToggleType.BUTTON, isOn: indexed.item.submitted }) {
-              Text('提交')
-                .fontSize(11)
+                .fontColor(Color.White)
+                .backgroundColor(this.priorityColor(indexed.item.priority))
             }
-            .height(24)
-            .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
-            .onChange((isOn: boolean) => {
-              if (isOn !== indexed.item.submitted) {
-                this.toggleSubmitted(indexed);
+            if (indexed.item.type === TodoType.Assignment && indexed.item.channels.length > 0) {
+              Text('作业')
+                .fontSize(10)
+                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                .borderRadius(5)
+                .fontColor(Color.White)
+                .backgroundColor($r('app.color.hour'))
+
+              ForEach(indexed.item.channels, (ch: SubmitChannel) => {
+                Text(CHANNEL_NAMES[ch])
+                  .fontSize(10)
+                  .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
+                  .padding({ left: 5, right: 5, top: 1, bottom: 1 })
+                  .borderRadius(5)
+                  .border({
+                    width: 1,
+                    color: presetColor[BackgroundImage.themeColor].accentColor
+                  })
+              })
+              Blank()
+              Toggle({ type: ToggleType.BUTTON, isOn: indexed.item.submitted }) {
+                Text('提交')
+                  .fontSize(11)
               }
-            })
+              .height(24)
+              .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
+              .onChange((isOn: boolean) => {
+                if (isOn !== indexed.item.submitted) {
+                  this.toggleSubmitted(indexed);
+                }
+              })
+            }
+          }
+          .width('100%')
+        }
+
+        if (indexed.item.imagePaths !== undefined && indexed.item.imagePaths.length > 0) {
+          Flex({ wrap: FlexWrap.Wrap }) {
+            ForEach(indexed.item.imagePaths, (path: string) => {
+              Image(fileUri.getUriFromPath(path))
+                .width(80)
+                .height(80)
+                .objectFit(ImageFit.Cover)
+                .borderRadius(8)
+                .draggable(false)
+                .margin({ right: 6, top: 2 })
+            }, (path: string) => path)
           }
           .width('100%')
         }
@@ -547,6 +640,81 @@ struct TodoPage {
                 this.draftCourse = index === 0 ? '' : this.courseNames[index - 1];
               })
           }
+          .margin({ bottom: 5 })
+
+          // 重要度
+          Row() {
+            Text('重要度')
+            Slider({ min: 0, max: MAX_PRIORITY, value: this.draftPriority, step: 1, style: SliderStyle.InSet })
+              .showSteps(true)
+              .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
+              .layoutWeight(1)
+              .onChange((value: number) => {
+                this.draftPriority = Math.round(value);
+              })
+            Text(`${this.draftPriority}`)
+              .width(24)
+              .textAlign(TextAlign.Center)
+          }
+          .margin({ bottom: 5 })
+
+          // 附图
+          Column({ space: 5 }) {
+            Row({ space: 8 }) {
+              Text('附图')
+              Button('选择图片')
+                .fontSize(13)
+                .height(32)
+                .onClick(() => this.pickImage())
+            }
+            if (this.draftImagePaths.length > 0 || this.draftImagePendingUris.length > 0) {
+              Flex({ wrap: FlexWrap.Wrap }) {
+                ForEach(this.draftImagePaths, (path: string, index: number) => {
+                  Stack({ alignContent: Alignment.TopEnd }) {
+                    Image(fileUri.getUriFromPath(path))
+                      .width(80)
+                      .height(80)
+                      .objectFit(ImageFit.Cover)
+                      .borderRadius(8)
+                      .draggable(false)
+                    Text('×')
+                      .fontSize(14)
+                      .fontColor(Color.White)
+                      .width(20)
+                      .height(20)
+                      .textAlign(TextAlign.Center)
+                      .borderRadius(10)
+                      .backgroundColor('#99000000')
+                      .onClick(() => this.removeSavedImage(index))
+                  }
+                  .margin({ right: 8, bottom: 8 })
+                }, (path: string) => path)
+                ForEach(this.draftImagePendingUris, (uri: string, index: number) => {
+                  Stack({ alignContent: Alignment.TopEnd }) {
+                    Image(uri)
+                      .width(80)
+                      .height(80)
+                      .objectFit(ImageFit.Cover)
+                      .borderRadius(8)
+                      .draggable(false)
+                    Text('×')
+                      .fontSize(14)
+                      .fontColor(Color.White)
+                      .width(20)
+                      .height(20)
+                      .textAlign(TextAlign.Center)
+                      .borderRadius(10)
+                      .backgroundColor('#99000000')
+                      .onClick(() => this.removePendingImage(index))
+                  }
+                  .margin({ right: 8, bottom: 8 })
+                }, (uri: string) => uri)
+              }
+              .width('100%')
+            }
+          }
+          .alignItems(HorizontalAlign.Start)
+          .width('100%')
           .margin({ bottom: 5 })
 
           if (this.draftType === TodoType.Todo) {
