@@ -2,6 +2,7 @@
   "modelVersion": "5.1.1",
   "description": "Please describe the basic information.",
   "dependencies": {
+    "module_imagepreview": "file:entry/src/modules/ImagePreview"
   },
   "devDependencies": {
     "@ohos/hypium": "1.0.21",

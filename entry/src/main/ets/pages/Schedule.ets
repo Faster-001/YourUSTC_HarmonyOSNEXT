@@ -799,8 +799,8 @@ struct Schedule {
             })
           }
           .width('100%')
-          .transition(TransitionEffect.move(TransitionEdge.BOTTOM).animation({ duration: 600, delay: 60 * index, curve: Curve.Ease }))
-        });
+          .transition(TransitionEffect.move(TransitionEdge.START).animation({ duration: 600, delay: 60 * index, curve: Curve.Ease }))
+        }, (semester: semesterAttribute, _index: number) => semester.createTime.toString());
       }
       .width('100%')
       .layoutWeight(1)

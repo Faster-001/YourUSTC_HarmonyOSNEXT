@@ -14,9 +14,20 @@ import {
   CounterComponent, CounterType,
   SegmentButton, SegmentButtonOptions, SegmentButtonItemTuple
 } from '@kit.ArkUI';
+import { ImagePreview } from 'module_imagepreview';
 
 /** 提交渠道显示名，下标与 SubmitChannel 枚举值对应 */
-const CHANNEL_NAMES: string[] = ['BB教学平台', 'QQ', '邮箱', '线上', '线下'];
+const CHANNEL_NAMES: string[] = ['BB系统', 'QQ', '邮箱', '线上', '线下'];
+
+/**
+ * 编辑弹窗草稿中的一张附图。
+ * uri 统一用于 Image 展示与 ImagePreview 预览；
+ * path 为已保存到私有目录的绝对路径，缺省表示本次新选取、保存时才导入。
+ */
+interface DraftImage {
+  uri: string;
+  path?: string;
+}
 
 @Builder
 export function TodoBuilder(name: string, param?: object) {
@@ -78,10 +89,8 @@ struct TodoPage {
   @State draftChannels: boolean[] = [false, false, false, false, false];
   /** 编辑弹窗草稿：重要度 0-10 */
   @State draftPriority: number = DEFAULT_PRIORITY;
-  /** 编辑弹窗草稿：已保存的附图私有路径列表 */
-  @State draftImagePaths: string[] = [];
-  /** 编辑弹窗草稿：本次新选取、尚未导入的相册图片 uri 列表 */
-  @State draftImagePendingUris: string[] = [];
+  /** 编辑弹窗草稿：附图列表（统一以 uri 展示/预览，path 标记已保存项） */
+  @State draftImages: DraftImage[] = [];
 
   refresh(): void {
     // SegmentButton 的颜色保存在 options 中，主题变化时需手动同步
@@ -168,7 +177,7 @@ struct TodoPage {
     this.endHour = today.getHours() + 2 > 23 ? 23 : today.getHours() + 2;
     this.endMinute = 0;
     this.draftChannels = [false, false, false, false, false];
-    this.draftImagePendingUris = [];
+    this.draftImages = [];
     if (indexed === undefined) {
       this.editingIndex = -1;
       this.draftType = TodoType.Todo;
@@ -177,7 +186,6 @@ struct TodoPage {
       this.draftBeginDisabled = true;
       this.draftEndDisabled = true;
       this.draftPriority = DEFAULT_PRIORITY;
-      this.draftImagePaths = [];
     } else {
       const item = indexed.item;
       this.editingIndex = indexed.index;
@@ -185,7 +193,9 @@ struct TodoPage {
       this.draftText = item.text;
       this.draftCourse = item.course ?? '';
       this.draftPriority = item.priority ?? DEFAULT_PRIORITY;
-      this.draftImagePaths = (item.imagePaths ?? []).slice();
+      this.draftImages = (item.imagePaths ?? []).map((path: string): DraftImage => {
+        return { uri: fileUri.getUriFromPath(path), path: path };
+      });
       if (item.type === TodoType.Assignment) {
         this.draftEndDisabled = item.ddl === undefined;
         this.draftBeginDisabled = true;
@@ -249,11 +259,15 @@ struct TodoPage {
     }
     item.priority = this.draftPriority;
     // 附图：已保存的路径 + 本次新选取（保存时导入私有目录）
-    const paths: string[] = this.draftImagePaths.slice();
-    this.draftImagePendingUris.forEach((uri: string): void => {
-      const imported = importImage(new fileUri.FileUri(uri).path);
-      if (imported !== '') {
-        paths.push(imported);
+    const paths: string[] = [];
+    this.draftImages.forEach((img: DraftImage): void => {
+      if (img.path !== undefined) {
+        paths.push(img.path);
+      } else {
+        const imported = importImage(new fileUri.FileUri(img.uri).path);
+        if (imported !== '') {
+          paths.push(imported);
+        }
       }
     });
     if (paths.length > 0) {
@@ -357,23 +371,19 @@ struct TodoPage {
       const picker = new photoAccessHelper.PhotoViewPicker();
       const result = await picker.select(options);
       if (result.photoUris.length > 0) {
-        this.draftImagePendingUris = this.draftImagePendingUris.concat(result.photoUris);
+        const picked = result.photoUris.map((uri: string): DraftImage => {
+          return { uri: uri };
+        });
+        this.draftImages = this.draftImages.concat(picked);
       }
     } catch (e) {
       console.error('Todo: pickImage failed:', JSON.stringify(e));
     }
   }
 
-  /** 移除一张本次新选取、尚未保存的附图 */
-  removePendingImage(index: number): void {
-    this.draftImagePendingUris =
-      this.draftImagePendingUris.filter((_: string, i: number): boolean => i !== index);
-  }
-
-  /** 移除一张已保存的附图；对应文件在 updateItem 时清理 */
-  removeSavedImage(index: number): void {
-    this.draftImagePaths =
-      this.draftImagePaths.filter((_: string, i: number): boolean => i !== index);
+  /** 移除草稿中的一张附图；已保存文件在 updateItem 时清理 */
+  removeImage(index: number): void {
+    this.draftImages = this.draftImages.filter((_: DraftImage, i: number): boolean => i !== index);
   }
 
   /** 重要度对应的徽章底色，数值越高越醒目 */
@@ -672,7 +682,7 @@ struct TodoPage {
 
           // 附图
           Column({ space: 5 }) {
-            Row({ space: 8 }) {
+            Row() {
               Text('附图')
               Button('选择图片')
                 .fontSize(13)
@@ -680,16 +690,26 @@ struct TodoPage {
                 .onClick(() => this.pickImage())
                 .backgroundColor(presetColor[BackgroundImage.themeColor].accentColor)
             }
-            if (this.draftImagePaths.length > 0 || this.draftImagePendingUris.length > 0) {
+            .width('100%')
+            .justifyContent(FlexAlign.SpaceBetween)
+
+            if (this.draftImages.length > 0) {
               Flex({ wrap: FlexWrap.Wrap }) {
-                ForEach(this.draftImagePaths, (path: string, index: number) => {
+                ForEach(this.draftImages, (img: DraftImage, index: number) => {
                   Stack({ alignContent: Alignment.TopEnd }) {
-                    Image(fileUri.getUriFromPath(path))
+                    Image(img.uri)
                       .width(80)
                       .height(80)
                       .objectFit(ImageFit.Cover)
                       .borderRadius(8)
                       .draggable(false)
+                      .onClick(() => ImagePreview.show(
+                        this.draftImages.map((d: DraftImage): string => d.uri),
+                        {
+                          startIndex: index,
+                          showIndex: true,
+                          closeOnClickImage: false
+                        }))
                     Text('×')
                       .fontSize(14)
                       .fontColor(Color.White)
@@ -698,30 +718,10 @@ struct TodoPage {
                       .textAlign(TextAlign.Center)
                       .borderRadius(10)
                       .backgroundColor('#99000000')
-                      .onClick(() => this.removeSavedImage(index))
+                      .onClick(() => this.removeImage(index))
                   }
                   .margin({ right: 8, bottom: 8 })
-                }, (path: string) => path)
-                ForEach(this.draftImagePendingUris, (uri: string, index: number) => {
-                  Stack({ alignContent: Alignment.TopEnd }) {
-                    Image(uri)
-                      .width(80)
-                      .height(80)
-                      .objectFit(ImageFit.Cover)
-                      .borderRadius(8)
-                      .draggable(false)
-                    Text('×')
-                      .fontSize(14)
-                      .fontColor(Color.White)
-                      .width(20)
-                      .height(20)
-                      .textAlign(TextAlign.Center)
-                      .borderRadius(10)
-                      .backgroundColor('#99000000')
-                      .onClick(() => this.removePendingImage(index))
-                  }
-                  .margin({ right: 8, bottom: 8 })
-                }, (uri: string) => uri)
+                }, (img: DraftImage) => img.uri)
               }
               .width('100%')
             }
@@ -733,14 +733,14 @@ struct TodoPage {
           if (this.draftType === TodoType.Todo) {
             // 待办：开始时间
             Row() {
-              Text('开始时间')
+              Text($r('app.string.start_time_colon'))
                 .layoutWeight(1)
               Toggle({ type: ToggleType.Checkbox, isOn: this.draftBeginDisabled })
                 .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
                 .onChange((isOn: boolean) => {
                   this.draftBeginDisabled = isOn;
                 })
-              Text('不选择')
+              Text($r('app.string.not_specify'))
             }
 
             Row() {
@@ -784,14 +784,14 @@ struct TodoPage {
 
             // 待办：截止时间
             Row() {
-              Text('截止时间')
+              Text($r('app.string.end_time_colon'))
                 .layoutWeight(1)
               Toggle({ type: ToggleType.Checkbox, isOn: this.draftEndDisabled })
                 .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
                 .onChange((isOn: boolean) => {
                   this.draftEndDisabled = isOn;
                 })
-              Text('不选择')
+              Text($r('app.string.not_specify'))
             }
 
             Row() {
@@ -841,7 +841,7 @@ struct TodoPage {
                 .onChange((isOn: boolean) => {
                   this.draftEndDisabled = isOn;
                 })
-              Text('不选择')
+              Text($r('app.string.not_specify'))
             }
 
             Row() {
@@ -885,7 +885,7 @@ struct TodoPage {
 
             // 作业：提交渠道多选
             Column() {
-              Text('提交渠道')
+              Text($r('app.string.submit_channel'))
                 .margin({ bottom: 5 })
               Flex({ wrap: FlexWrap.Wrap }) {
                 ForEach(CHANNEL_NAMES, (name: string, index: number) => {
@@ -912,8 +912,12 @@ struct TodoPage {
         .alignItems(HorizontalAlign.Start)
         .width('90%')
       }
+      .fadingEdge(true)
+      .width('100%')
+      .layoutWeight(1)
       .align(Alignment.Top)
-      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
+      .scrollBar(BarState.Auto)
+      .edgeEffect(EdgeEffect.Spring, { alwaysEnabled: false });
     }
     .width('100%')
     .height('100%')

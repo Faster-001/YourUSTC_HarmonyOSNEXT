@@ -182,7 +182,7 @@ struct ExamDetail {
         .margin({ bottom: 5 });
 
         Row() {
-          Text($r('app.string.exam_detail_date'));
+          Text($r('app.string.date_colon'));
           CalendarPicker({ selected: new Date(this.oriExamInfo.date.slice(0, 10)) })
             .edgeAlign(CalendarAlign.CENTER)
             .onChange((value) => {
@@ -192,7 +192,7 @@ struct ExamDetail {
         .margin({ bottom: 5 });
 
         Row() {
-          Text($r('app.string.exam_detail_start_time'));
+          Text($r('app.string.start_time_colon'));
           CounterComponent({
             options: {
               type: CounterType.INLINE,
@@ -227,7 +227,7 @@ struct ExamDetail {
         }
         .margin({ bottom: 5 });
         Row() {
-          Text($r('app.string.exam_detail_end_time'));
+          Text($r('app.string.end_time_colon'));
           CounterComponent({
             options: {
               type: CounterType.INLINE,
@@ -287,7 +287,7 @@ struct ExamDetail {
         }
 
         Row() {
-          Text($r('app.string.exam_detail_other'));
+          Text($r('app.string.other_colon'));
           TextInput({ text: this.oriExamInfo.id, placeholder: $r('app.string.id') })
             .layoutWeight(1)
             .textOverflow(TextOverflow.Ellipsis)

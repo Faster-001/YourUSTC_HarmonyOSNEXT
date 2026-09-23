@@ -501,19 +501,19 @@
       "value": "备注"
     },
     {
-      "name": "exam_detail_other",
+      "name": "other_colon",
       "value": "其他："
     },
     {
-      "name": "exam_detail_date",
+      "name": "date_colon",
       "value": "日期："
     },
     {
-      "name": "exam_detail_start_time",
+      "name": "start_time_colon",
       "value": "开始时间："
     },
     {
-      "name": "exam_detail_end_time",
+      "name": "end_time_colon",
       "value": "结束时间："
     },
     {
@@ -1155,6 +1155,14 @@
     {
       "name": "no_todo_info",
       "value": "暂无待办"
+    },
+    {
+      "name": "not_specify",
+      "value": "不指定"
+    },
+    {
+      "name": "submit_channel",
+      "value": "提交渠道"
     }
   ]
 }
