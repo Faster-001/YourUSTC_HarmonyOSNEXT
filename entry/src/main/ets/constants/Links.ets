@@ -111,6 +111,7 @@ export const LINK: LinkSet[] = [
     { title: $r('app.string.LiFanXiaoDengJi'), url: [{ url: 'https://lfxdj.ustc.edu.cn' }], icon: $r('app.media.LiFanXiaoDengJi') },
     { title: $r('app.string.XueGongYiTiHua'), url: [{ url: 'https://xgyth.ustc.edu.cn' }], icon: $r('app.media.XueGongYiTiHua') },
     { title: $r('app.string.YuanXiZhuanYe'), url: [{ url: 'https://www.teach.ustc.edu.cn/education/239.html' }], icon: $r('app.media.YuanXiZhuanYe') },
+    { title: $r('app.string.DianZiQianShu'), url: [{ url: 'https://esign.ustc.edu.cn' }], icon: $r('app.media.default_function_icon') }
   ]},
   // 校园生活
   { title: '\udb82\udc0d 校园生活', set: [

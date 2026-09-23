@@ -237,6 +237,10 @@
       "value": "院系专业"
     },
     {
+      "name": "DianZiQianShu",
+      "value": "电子签署"
+    },
+    {
       "name": "XueGongYiTiHua",
       "value": "学工一体化"
     },
