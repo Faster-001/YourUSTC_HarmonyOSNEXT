@@ -390,7 +390,7 @@ struct TodoPage {
   /** 条目的时间描述文本 */
   timeDescription(item: TodoItem): string {
     if (item.type === TodoType.Assignment) {
-      return item.ddl !== undefined ? `DDL ${this.formatTime(item.ddl)}` : '';
+      return item.ddl !== undefined ? `截止时间 ${this.formatTime(item.ddl)}` : '';
     }
     const parts: string[] = [];
     if (item.beginTime !== undefined) {
@@ -440,94 +440,87 @@ struct TodoPage {
 
   @Builder
   todoCard(indexed: IndexedTodoItem) {
-    Row({ space: 10 }) {
-      // 完成状态开关按钮
-      Toggle({ type: ToggleType.Button, isOn: indexed.item.done }) {
-        Text('完成')
-          .fontSize(12)
-      }
-      .width(56)
-      .height(28)
-      .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
-      .onChange((isOn: boolean) => {
-        if (isOn !== indexed.item.done) {
-          this.toggleDone(indexed);
-        }
-      })
+    Row({ space: 12 }) {
+      // 完成状态：紧凑圆形勾选，替代原先占位的“完成”按钮
 
-      Column({ space: 3 }) {
+      Checkbox()
+        .select(indexed.item.done)
+        .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
+        .onChange((value: boolean) => {
+          this.toggleDone(indexed);
+        });
+
+      Column({ space: 5 }) {
+        // 标题行：正文为主，课程名作为前置小标签
         Text() {
           if (indexed.item.course) {
             Span(indexed.item.course)
-            Span('：')
+              .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
+              // .padding({ left: 6, right: 6, top: 1, bottom: 1 })
+              // .borderRadius(4)
+              // .backgroundColor($r('app.color.list_item_count_background'))
+            Span('  ')
           }
           Span(indexed.item.text)
+            .fontWeight(indexed.item.done ? FontWeight.Normal : FontWeight.Medium)
             .decoration({
               type: indexed.item.done ? TextDecorationType.LineThrough : TextDecorationType.None,
-              color: Color.Gray
+              color: $r('app.color.transparent_text')
             })
         }
+        .fontSize(15)
 
-        if (this.timeDescription(indexed.item) !== '') {
-          Text(this.timeDescription(indexed.item))
-            .fontSize(12)
-            .fontColor(!indexed.item.done && getEffectiveTime(indexed.item) <= Date.now() ?
-              $r('app.color.minute') : $r('app.color.transparent_text'))
-        }
-
-        if ((indexed.item.priority !== undefined && indexed.item.priority > 0) ||
-          (indexed.item.type === TodoType.Assignment && indexed.item.channels.length > 0)) {
-          Row({ space: 5 }) {
-            if (indexed.item.priority !== undefined && indexed.item.priority > 0) {
-              Text(`重要度 ${indexed.item.priority}`)
-                .fontSize(10)
-                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                .borderRadius(5)
-                .fontColor(Color.White)
-                .backgroundColor(this.priorityColor(indexed.item.priority))
-            }
-            if (indexed.item.type === TodoType.Assignment && indexed.item.channels.length > 0) {
-              Text('作业')
-                .fontSize(10)
-                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                .borderRadius(5)
-                .fontColor(Color.White)
-                .backgroundColor($r('app.color.hour'))
-
-              ForEach(indexed.item.channels, (ch: SubmitChannel) => {
-                Text(CHANNEL_NAMES[ch])
+        // 信息行：时间与徽章同行，左对齐
+        Row({ space: 8 }) {
+          if ((indexed.item.priority !== undefined && indexed.item.priority > 0) ||
+            indexed.item.type === TodoType.Assignment) {
+            Row({ space: 4 }) {
+              if (indexed.item.type === TodoType.Assignment) {
+                Text('作业')
                   .fontSize(10)
-                  .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
-                  .padding({ left: 5, right: 5, top: 1, bottom: 1 })
-                  .borderRadius(5)
-                  .border({
-                    width: 1,
-                    color: presetColor[BackgroundImage.themeColor].accentColor
-                  })
-              })
-              Blank()
-              Toggle({ type: ToggleType.Button, isOn: indexed.item.submitted }) {
-                Text('提交')
-                  .fontSize(11)
+                  .fontColor($r('app.color.transparent_text'))
+                  .padding({ left: 6, right: 6, top: 1, bottom: 1 })
+                  .borderRadius(4)
+                  .backgroundColor($r('app.color.list_item_count_background'))
               }
-              .height(24)
-              .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
-              .onChange((isOn: boolean) => {
-                if (isOn !== indexed.item.submitted) {
-                  this.toggleSubmitted(indexed);
-                }
-              })
+              if (indexed.item.priority !== undefined && indexed.item.priority > 0) {
+                Text(`重要度 ${indexed.item.priority}`)
+                  .fontSize(10)
+                  .fontColor(Color.White)
+                  .padding({ left: 6, right: 6, top: 1, bottom: 1 })
+                  .borderRadius(4)
+                  .backgroundColor(this.priorityColor(indexed.item.priority))
+              }
             }
           }
-          .width('100%')
+
+          if (this.timeDescription(indexed.item) !== '') {
+            Text(this.timeDescription(indexed.item))
+              .fontSize(12)
+              .fontColor(!indexed.item.done && getEffectiveTime(indexed.item) <= Date.now() ?
+                $r('app.color.red') : $r('app.color.normal_text'))
+          }
+
+          // 作业渠道：紧凑文字，弱化描边
+          if (indexed.item.type === TodoType.Assignment && indexed.item.channels.length > 0) {
+            Text(indexed.item.channels
+              .map((ch: SubmitChannel): string => CHANNEL_NAMES[ch])
+              .join(' / '))
+              .fontSize(11)
+              .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
+              .opacity(0.85)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
         }
+        .width('100%')
 
         if (indexed.item.imagePaths !== undefined && indexed.item.imagePaths.length > 0) {
           Flex({ wrap: FlexWrap.Wrap }) {
             ForEach(indexed.item.imagePaths, (path: string) => {
               Image(fileUri.getUriFromPath(path))
-                .width(80)
-                .height(80)
+                .width(72)
+                .height(72)
                 .objectFit(ImageFit.Cover)
                 .borderRadius(8)
                 .draggable(false)
@@ -539,9 +532,27 @@ struct TodoPage {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
+
+      // 作业提交：右侧竖排状态标记，避免与主信息抢视线
+      if (indexed.item.type === TodoType.Assignment) {
+        Column() {
+          Text(indexed.item.submitted ? '已提交' : '未提交')
+            .fontSize(11)
+            .fontColor(indexed.item.submitted ?
+              presetColor[BackgroundImage.themeColor].accentColor : $r('app.color.transparent_text'))
+            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+            .borderRadius(6)
+            .border({
+              width: 1,
+              color: indexed.item.submitted ?
+                presetColor[BackgroundImage.themeColor].accentColor : $r('app.color.transparent_text')
+            })
+        }
+        .onClick(() => this.toggleSubmitted(indexed))
+      }
     }
     .width('100%')
-    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+    .padding({ left: 16, right: 14, top: 14, bottom: 14 })
     .borderRadius(16)
     .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
     .backgroundBlurStyle(BackgroundImage.blurLevel)
@@ -616,7 +627,8 @@ struct TodoPage {
           // 内容
           Row() {
             Text('内容：')
-            TextInput({ text: this.draftText })
+            TextArea({ text: this.draftText })
+              .maxLines(6)
               .layoutWeight(1)
               .onChange((input: string) => {
                 this.draftText = input;
@@ -666,6 +678,7 @@ struct TodoPage {
                 .fontSize(13)
                 .height(32)
                 .onClick(() => this.pickImage())
+                .backgroundColor(presetColor[BackgroundImage.themeColor].accentColor)
             }
             if (this.draftImagePaths.length > 0 || this.draftImagePendingUris.length > 0) {
               Flex({ wrap: FlexWrap.Wrap }) {
@@ -949,11 +962,10 @@ struct TodoPage {
                 this.refresh();
               })
             Toggle({ type: ToggleType.Button, isOn: this.showFilter }) {
-              Text('筛选')
-                .fontSize(13)
+              Text('筛选').fontSize(13)
             }
             .height(40)
-            .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
+            // .selectedColor(presetColor[BackgroundImage.themeColor].accentColor)
             .onChange((isOn: boolean) => {
               this.showFilter = isOn;
             })
@@ -1005,6 +1017,7 @@ struct TodoPage {
         .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
         .backgroundBlurStyle(BackgroundImage.blurLevel)
         .width('100%')
+        .animation({ duration: 500, curve: Curve.Ease })
 
         if (this.todoList.length === 0) {
           Column() {
