@@ -77,7 +77,9 @@ function posToIndex(x: number, y: number): number {
 @Component
 struct ThemeSetting {
 
-  @State sliderNum: number = BlurStyleToNum(BackgroundImage.blurLevel); // 模糊程度滑动条参数
+  // 直接读持久化的BlurLevel：当前为透明模式时BackgroundImage.blurLevel会被refreshDisplay置为undefined，
+  // 从它初始化会让滑动条回落到默认值，而非用户上次保存的模糊程度
+  @State sliderNum: number = BlurStyleToNum(UnifiedPreferences.getNumberSync('BlurLevel', BlurStyle.COMPONENT_REGULAR)); // 模糊程度滑动条参数
   @State opacityNum: number = UnifiedPreferences.getNumberSync('OpacityLevel', 100); // 不透明度
   @State isShown: boolean = BackgroundImage.showImage; // 显示预览图片
   @State imgPreview: ResourceStr = (BackgroundImage.imgPath == '') ? $r('app.media.confused') : fileUri.getUriFromPath(BackgroundImage.imgPath); //预览图片
