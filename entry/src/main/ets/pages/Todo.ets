@@ -653,7 +653,7 @@ struct TodoPage {
 
         if (indexed.item.imagePaths !== undefined && indexed.item.imagePaths.length > 0) {
           Flex({ wrap: FlexWrap.Wrap }) {
-            ForEach(indexed.item.imagePaths, (path: string) => {
+            ForEach(indexed.item.imagePaths, (path: string, index: number) => {
               Image(fileUri.getUriFromPath(path))
                 .width(72)
                 .height(72)
@@ -662,6 +662,14 @@ struct TodoPage {
                 .draggable(false)
                 .autoResize(true)
                 .margin({ right: 6, top: 2 })
+                // 点击图片进入预览而非编辑弹窗，阻止冒泡到卡片的 onClick
+                .onClick(() =>
+                  ImagePreview.show((indexed.item.imagePaths ?? []).map((p: string): string => fileUri.getUriFromPath(p)), {
+                    startIndex: index,
+                    showIndex: true,
+                    closeOnClickImage: false
+                  })
+                )
             }, (path: string) => path)
           }
           .width('100%')
