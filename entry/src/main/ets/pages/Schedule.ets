@@ -651,7 +651,7 @@ struct Schedule {
       .margin({ bottom: 5 })
 
       List({ space: 14, initialIndex: this.displayTerm }) {
-        ForEach(this.semesters, (semester: semesterAttribute, index: number) => {
+        ForEach(this.semesters, (semester: semesterAttribute) => {
           ListItem() {
             Column({ space: 4 }) {
               Row({ space: 5 }) {
@@ -667,14 +667,18 @@ struct Schedule {
                   Image($r('app.media.default_semester'))
                     .height(22)
                     .width(22)
-                    .fillColor(this.defaultSemester === index ? presetColor[BackgroundImage.themeColor].accentColor : undefined)
+                    .fillColor(this.semesterIndexOf(semester) === this.defaultSemester ? presetColor[BackgroundImage.themeColor].accentColor : undefined)
                 }
                 .height(40)
                 .width(40)
                 .onClick(() => {
-                  this.getUIContext().getPromptAction().showToast({ message: $r('app.string.set_default_semester', ScheduleManager.semesters[index].name) });
-                  ScheduleManager.setDefaultSemester(index);
-                  this.defaultSemester = index;
+                  const idx = this.semesterIndexOf(semester);
+                  if (idx < 0) {
+                    return;
+                  }
+                  this.getUIContext().getPromptAction().showToast({ message: $r('app.string.set_default_semester', this.semesters[idx].name) });
+                  ScheduleManager.setDefaultSemester(idx);
+                  this.defaultSemester = idx;
                 })
 
                 Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
@@ -685,16 +689,20 @@ struct Schedule {
                 .height(40)
                 .width(40)
                 .onClick(() => {
-                  const semName = this.semesters[index].name;
+                  const idx = this.semesterIndexOf(semester);
+                  if (idx < 0) {
+                    return;
+                  }
+                  const semName = this.semesters[idx].name;
                   this.renameController = new CustomDialogController({
                     builder: RenameDialog({
                       name: semName,
                       message: $r('app.string.rename_semester', semName),
                       onConfirm: (newName: string) => {
-                        if (index === this.displayTerm) {
+                        if (idx === this.displayTerm) {
                           this.displayName = newName;
                         }
-                        ScheduleManager.renameSemester(index, newName);
+                        ScheduleManager.renameSemester(idx, newName);
                         this.semesters = ScheduleManager.semesters;
                       }
                     }),
@@ -712,12 +720,16 @@ struct Schedule {
                 .height(40)
                 .width(40)
                 .onClick(() => {
+                  const idx = this.semesterIndexOf(semester);
+                  if (idx < 0) {
+                    return;
+                  }
                   const currentTime: Date = new Date();
                   const currentTimestamp: number = currentTime.getTime();
-                  if (this.displayTerm === index)
+                  if (idx === this.displayTerm)
                     ScheduleManager.newSemester(this.displayName + '_副本', '从「' + this.displayName + '」复制', currentTime.setHours(0, 0, 0, 0) - 86400000 * currentTime.getDay(), currentTimestamp, undefined, this.thisWeekSchedule);
                   else
-                    ScheduleManager.newSemester(this.semesters[index].name + '_副本', '从「' + this.semesters[index].name + '」复制', currentTime.setHours(0, 0, 0, 0) - 86400000 * currentTime.getDay(), currentTimestamp, undefined, ScheduleStorage.getCourses(this.semesters[index].createTime));
+                    ScheduleManager.newSemester(this.semesters[idx].name + '_副本', '从「' + this.semesters[idx].name + '」复制', currentTime.setHours(0, 0, 0, 0) - 86400000 * currentTime.getDay(), currentTimestamp, undefined, ScheduleStorage.getCourses(this.semesters[idx].createTime));
                   ScheduleManager.switchTempSemester(ScheduleManager.semesters.length - 1);
                   this.initSchedule();
                   this.refreshGrid();
@@ -730,13 +742,17 @@ struct Schedule {
                 }
                 .height(40)
                 .width(40)
-                .enabled(this.displayTerm !== index && this.defaultSemester !== index)
+                .enabled(this.semesterIndexOf(semester) !== this.displayTerm && this.semesterIndexOf(semester) !== this.defaultSemester)
                 .onClick(() => {
+                  const idx = this.semesterIndexOf(semester);
+                  if (idx < 0) {
+                    return;
+                  }
                   this.msgDialogController = new CustomDialogController({
                     builder: MessageDialog({
                       message: $r('app.string.delete_semester_or_not'),
                       onConfirm: () => {
-                        ScheduleManager.deleteSemester(index);
+                        ScheduleManager.deleteSemester(idx);
                         this.displayTerm = ScheduleManager.displaySemester;
                         this.defaultSemester = ScheduleManager.defaultSemester;
                         this.semesters = ScheduleManager.semesters;
@@ -757,6 +773,10 @@ struct Schedule {
                   .borderRadius(15)
                   .fontColor(presetColor[BackgroundImage.themeColor].accentColor)
                   .onClick(() => {
+                    const idx = this.semesterIndexOf(semester);
+                    if (idx < 0) {
+                      return;
+                    }
                     this.getUIContext().showDatePickerDialog({
                       start: new Date(0),
                       end: new Date(4133865600000),
@@ -764,8 +784,8 @@ struct Schedule {
                       showTime: false,
                       selectedTextStyle: { color: presetColor[BackgroundImage.themeColor].accentColor },
                       onDateAccept: (value: Date) => {
-                        ScheduleManager.changeSemesterStartTime(index, value.setHours(0, 0, 0, 0) - 86400000 * value.getDay());
-                        if (this.displayTerm === index) {
+                        ScheduleManager.changeSemesterStartTime(idx, value.setHours(0, 0, 0, 0) - 86400000 * value.getDay());
+                        if (this.displayTerm === idx) {
                           this.initSchedule();
                           this.refreshGrid();
                         }
@@ -792,20 +812,24 @@ struct Schedule {
             }
             .width('100%')
             .alignItems(HorizontalAlign.Start)
-            .padding(this.displayTerm === index ? 7 : 10)
+            .padding(this.semesterIndexOf(semester) === this.displayTerm ? 7 : 10)
             .borderRadius(20)
-            .borderColor(this.displayTerm === index ? presetColor[BackgroundImage.themeColor].accentColor : undefined)
-            .borderWidth(this.displayTerm === index ? 3 : undefined)
+            .borderColor(this.semesterIndexOf(semester) === this.displayTerm ? presetColor[BackgroundImage.themeColor].accentColor : undefined)
+            .borderWidth(this.semesterIndexOf(semester) === this.displayTerm ? 3 : undefined)
             .backgroundColor($r('app.color.grid_background'))
             .onClick(() => {
-              ScheduleManager.switchTempSemester(index);
+              const idx = this.semesterIndexOf(semester);
+              if (idx < 0) {
+                return;
+              }
+              ScheduleManager.switchTempSemester(idx);
               this.initSchedule();
               this.refreshGrid();
             })
           }
           .width('100%')
-          .transition(TransitionEffect.move(TransitionEdge.START).animation({ duration: 600, delay: 60 * index, curve: Curve.Ease }))
-        }, (semester: semesterAttribute, _index: number) => semester.createTime.toString());
+          .transition(TransitionEffect.move(TransitionEdge.START).animation({ duration: 600, delay: 60 * this.semesterIndexOf(semester), curve: Curve.Ease }))
+        }, (semester: semesterAttribute) => semester.createTime.toString());
       }
       .width('100%')
       .layoutWeight(1)
@@ -814,6 +838,14 @@ struct Schedule {
     .width('100%')
     .height('100%')
     .padding(16)
+  }
+
+  /**
+   * 置顶、删除等操作会原地重排semesters数组，而ForEach按键值复用的组件闭包中捕获的index
+   * 是创建时的旧值，因此所有按学期定位的逻辑都以createTime为标识现查下标，避免换序后操作到错误的学期。
+   */
+  semesterIndexOf(target: semesterAttribute): number {
+    return this.semesters.findIndex((s: semesterAttribute) => s.createTime === target.createTime);
   }
 
   refreshGrid() {
