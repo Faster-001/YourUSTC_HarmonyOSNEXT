@@ -19,14 +19,14 @@ export function AddCardBuilder() {
 struct AddCard {
   cardSize: ConstraintSizeOptions | undefined;
 
-  @Builder CardMenu(cardType: number, bindComponent: string) {
+  @Builder CardMenu(cardType: number, bindComponent: string, formName: string) {
     Menu() {
       AddFormMenuItem({
         bundleName: 'com.nic.dailynic',
         abilityName: 'EntryFormAbility',
         parameters: {
           'ohos.extra.param.key.form_dimension': 3, // 卡片尺寸，1代表1*2卡片，2代表2*2卡片，3代表2*4卡片，4代表4*4卡片，7代表6*4卡片
-          'ohos.extra.param.key.form_name': cardType === 0 ? 'class_schedule_daily' : 'exam_info',
+          'ohos.extra.param.key.form_name': formName,
           'ohos.extra.param.key.module_name': 'entry'
         }
       },
@@ -85,6 +85,7 @@ struct AddCard {
           Column() {
             Image(hintImage)
               .height(60)
+              .autoResize(true)
             Text(hint)
           }
           .justifyContent(FlexAlign.Center)
@@ -135,7 +136,7 @@ struct AddCard {
           .borderRadius(20)
           .backgroundColor($r('app.color.grid_background'))
           .id('ClassCard')
-          .bindMenu(this.CardMenu(0, 'ClassCard'))
+          .bindMenu(this.CardMenu(0, 'ClassCard', 'class_schedule_daily'))
 
           Row({ space: 5 }) {
             Image($r('app.media.exam_card'))
@@ -163,7 +164,36 @@ struct AddCard {
           .borderRadius(20)
           .backgroundColor($r('app.color.grid_background'))
             .id('ExamCard')
-            .bindMenu(this.CardMenu(1, 'ExamCard'))
+            .bindMenu(this.CardMenu(1, 'ExamCard', 'exam_info'))
+
+          Row({ space: 5 }) {
+            Image($r('app.media.exam_card'))
+              .fillColor(presetColor[BackgroundImage.themeColor].accentColor)
+              .height(30);
+            Text('待办卡片')
+              .fontSize(20)
+              .fontWeight(FontWeight.Bold);
+            Divider()
+              .layoutWeight(1);
+          }
+          .margin({ top: 16, bottom: 5 })
+          .width('100%')
+
+          Text('大约每 3 小时自动刷新一次；点击卡片可直达待办页面。由于系统限制，若设备处于锁屏状态，则解锁后刷新，或者小概率不刷新。')
+            .margin({ bottom: 3 })
+            .padding({ left: 8, right: 8 })
+
+          Column() {
+            this.SimulateCard($r('app.string.todo_card_title'), $r('app.string.no_todo_info1'), $r('app.media.lying_on_lounge'))
+          }
+          .padding({ top: 12, left: 12, right: 12 })
+          .width('100%')
+          .height('100%')
+          .constraintSize(this.cardSize)
+          .borderRadius(20)
+          .backgroundColor($r('app.color.grid_background'))
+          .id('TodoCard')
+          .bindMenu(this.CardMenu(2, 'TodoCard', 'todo_info'))
 
           Row({ space: 5 }) {
             Image($r('app.media.exam_card'))
