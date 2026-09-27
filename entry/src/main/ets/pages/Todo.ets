@@ -28,6 +28,28 @@ interface DraftImage {
   path?: string;
 }
 
+/**
+ * 编辑弹窗打开时的草稿快照。
+ * 关闭弹窗前将其与当前草稿逐字段比较，判断是否存在未保存的更改。
+ */
+interface DraftSnapshot {
+  type: TodoType;
+  text: string;
+  description: string;
+  course: string;
+  beginDisabled: boolean;
+  endDisabled: boolean;
+  beginDate: string;
+  endDate: string;
+  beginHour: number;
+  beginMinute: number;
+  endHour: number;
+  endMinute: number;
+  channels: boolean[];
+  priority: number;
+  images: DraftImage[];
+}
+
 @Builder
 export function TodoBuilder(name: string, param?: object) {
   TodoPage();
@@ -94,6 +116,8 @@ struct TodoPage {
   @State draftPriority: number = DEFAULT_PRIORITY;
   /** 编辑弹窗草稿：附图列表（统一以 uri 展示/预览，path 标记已保存项） */
   @State draftImages: DraftImage[] = [];
+  /** 编辑弹窗打开时的草稿快照，用于关闭前判断是否有未保存的更改 */
+  draftSnapshot: DraftSnapshot | null = null;
 
   refresh(): void {
     // SegmentButton 的颜色保存在 options 中，主题变化时需手动同步
@@ -232,6 +256,7 @@ struct TodoPage {
       }
     }
     this.draftTypeIndexes = [this.draftType];
+    this.takeDraftSnapshot();
     this.showSheet = true;
   }
 
@@ -319,6 +344,87 @@ struct TodoPage {
     }
     this.showSheet = false;
     this.refresh();
+  }
+
+  /** 记录当前草稿快照，在 openEditor 填充完草稿后调用 */
+  takeDraftSnapshot(): void {
+    const images: DraftImage[] = this.draftImages.map((img: DraftImage): DraftImage => {
+      return { uri: img.uri, path: img.path };
+    });
+    const snap: DraftSnapshot = {
+      type: this.draftType,
+      text: this.draftText,
+      description: this.draftDescription,
+      course: this.draftCourse,
+      beginDisabled: this.draftBeginDisabled,
+      endDisabled: this.draftEndDisabled,
+      beginDate: this.draftBeginDate,
+      endDate: this.draftEndDate,
+      beginHour: this.beginHour,
+      beginMinute: this.beginMinute,
+      endHour: this.endHour,
+      endMinute: this.endMinute,
+      channels: this.draftChannels.slice(),
+      priority: this.draftPriority,
+      images: images
+    };
+    this.draftSnapshot = snap;
+  }
+
+  /** 当前草稿相对打开时的快照是否有更改 */
+  hasDraftChanges(): boolean {
+    const snap = this.draftSnapshot;
+    if (snap === null) {
+      return false;
+    }
+    if (snap.type !== this.draftType || snap.text !== this.draftText ||
+      snap.description !== this.draftDescription || snap.course !== this.draftCourse ||
+      snap.beginDisabled !== this.draftBeginDisabled ||
+      snap.endDisabled !== this.draftEndDisabled ||
+      snap.beginDate !== this.draftBeginDate || snap.endDate !== this.draftEndDate ||
+      snap.beginHour !== this.beginHour || snap.beginMinute !== this.beginMinute ||
+      snap.endHour !== this.endHour || snap.endMinute !== this.endMinute ||
+      snap.priority !== this.draftPriority ||
+      snap.channels.length !== this.draftChannels.length ||
+      snap.images.length !== this.draftImages.length) {
+      return true;
+    }
+    for (let i = 0; i < snap.channels.length; i++) {
+      if (snap.channels[i] !== this.draftChannels[i]) {
+        return true;
+      }
+    }
+    for (let i = 0; i < snap.images.length; i++) {
+      if (snap.images[i].uri !== this.draftImages[i].uri ||
+        snap.images[i].path !== this.draftImages[i].path) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** 请求关闭编辑弹窗；有未保存的更改时先确认，dismissSheet 来自 bindSheet 的交互关闭拦截 */
+  requestCloseEditor(dismissSheet?: DismissSheetAction): void {
+    const close = (): void => {
+      if (dismissSheet !== undefined) {
+        dismissSheet.dismiss();
+      } else {
+        this.showSheet = false;
+      }
+    };
+    if (!this.hasDraftChanges()) {
+      close();
+      return;
+    }
+    this.msgDialogController = new CustomDialogController({
+      builder: MessageDialog({
+        message: '更改尚未保存，确定退出吗？',
+        onConfirm: () => close()
+      }),
+      autoCancel: true,
+      gridCount: 4
+    });
+    this.msgDialogController.open();
   }
 
   confirmDelete(): void {
@@ -621,7 +727,7 @@ struct TodoPage {
         .width(42)
         .height(42)
         .onClick(() => {
-          this.showSheet = false;
+          this.requestCloseEditor();
         })
 
         Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
@@ -1060,7 +1166,10 @@ struct TodoPage {
         showClose: false,
         scrollSizeMode: ScrollSizeMode.CONTINUOUS,
         backgroundColor: '#0000',
-        blurStyle: BlurStyle.Regular
+        blurStyle: BlurStyle.Regular,
+        onWillDismiss: (dismissAction: DismissSheetAction) => {
+          this.requestCloseEditor(dismissAction);
+        }
       })
     }
     .title({ main: $r('app.string.todo_card_title'), sub: '尝鲜版' }, {
