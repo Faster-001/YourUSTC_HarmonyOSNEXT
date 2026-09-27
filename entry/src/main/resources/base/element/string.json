@@ -677,6 +677,14 @@
       "value": "明日课程"
     },
     {
+      "name": "today_label",
+      "value": "今日"
+    },
+    {
+      "name": "tomorrow_label",
+      "value": "明日"
+    },
+    {
       "name": "class_soon",
       "value": "%d分钟后上课"
     },
@@ -870,7 +878,7 @@
     },
     {
       "name": "schedule_card_title",
-      "value": "今日课程"
+      "value": "今明课程"
     },
     {
       "name": "runtime_error",

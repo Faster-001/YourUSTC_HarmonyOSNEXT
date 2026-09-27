@@ -4,6 +4,17 @@ import * as ScheduleSources from '../../constants/ScheduleSources'
 
 let localStorage = new LocalStorage();
 
+// 兼容 #AARRGGBB / #ARGB / #RRGGBB 三种色值串，取出左侧色条可用的颜色
+function courseBarColor(color: string): string {
+  if (color.length === 9) {
+    return `#${color.slice(3)}`;
+  }
+  if (color.length === 5) {
+    return `#${color.slice(2)}`;
+  }
+  return color;
+}
+
 @Entry(localStorage)
 @Component
 struct Class_schedule_dailyCard {
@@ -26,140 +37,107 @@ struct Class_schedule_dailyCard {
     /* bottomIcon               */ undefined
   )
 
+  // 单条课程：窄列里课程名在上，教师/教室/时间在下，课程色作为左侧色条
   @Builder
-  cardListBuilder() {
-    if (this.todayCourse.length == 0) {
-      ListItem() {
+  courseItem(course: ScheduleSources.classAttribute) {
+    Column() {
+      Text() {
+        Span(course.name)
+          .fontSize(13)
+          .fontWeight(FontWeight.Bold)
+        if (course.location !== '')
+          Span(` @${course.location}`)
+            .fontSize(11)
+      }
+
+      Text(`\udb81\uddf3 ${course.teacher}`)
+        .fontSize(11)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .visibility(course.teacher == '' ? Visibility.None : Visibility.Visible)
+
+      Text(`\udb80\udfdc ${ScheduleSources.commonClassTime[course.timeSpan[0]][0]}~${ScheduleSources.commonClassTime[course.timeSpan[course.timeSpan.length - 1]][1]}`)
+        .fontSize(11)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding({ left: 5, right: 4, top: 2, bottom: 2 })
+    .border({
+      width: { left: 3 },
+      color: { left: courseBarColor(course.color) }
+    })
+    .margin({ top: 3, bottom: 3 })
+  }
+
+  @Builder
+  todayColumn() {
+    Column() {
+      Text($r('app.string.today_label'))
+        .fontSize(12)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.green'))
+        .maxLines(1)
+        // .margin({ bottom: 4 })
+
+      if (this.todayCourse.length === 0) {
         Column() {
           Image($r('app.media.no_course_today'))
-            .height(60)
+            .height(40)
             .interpolation(ImageInterpolation.Medium)
+            .opacity(0.9)
           Text($r('app.string.no_class_today'))
-        }
-        .justifyContent(FlexAlign.Center)
-      }
-      .width('100%')
-      .height('100%')
-      .padding({ top: 12, bottom: 12 })
-    } else {
-      ForEach(this.todayCourse, (course: ScheduleSources.classAttribute, index: number) => {
-        Row() {
-          Column() {
-            Line()
-              .stroke((course.color.length === 9) ? `#${course.color.slice(3)}` : ((course.color.length === 5) ? `#${course.color.slice(2)}` : course.color))
-              .width(6)
-              .height(20)
-              .strokeLineCap(LineCapStyle.Round)
-              .strokeWidth(6)
-              .startPoint([3, 0])
-              .endPoint([3, 20])
-              .margin({ right: 4 });
-          }
-          .alignItems(HorizontalAlign.End)
-          .width('5%')
-
-          Column() {
-            Text(course.name)
-              .textAlign(TextAlign.Start)
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .maxLines(2)
-              .textOverflow({ overflow: TextOverflow.Ellipsis });
-          }
-          .width('45%')
-          .alignItems(HorizontalAlign.Start)
-          .padding({ right: 10 });
-
-          Column() {
-            Text(`\udb81\uddf3 ${course.teacher}`)
-              .maxLines(1)
-              .fontSize(13)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .visibility(course.teacher == '' ? Visibility.None : Visibility.Visible);
-
-            Text(`\udb80\uddb8 ${course.location}`)
-              .maxLines(1)
-              .fontSize(13)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .visibility(course.location == '' ? Visibility.None : Visibility.Visible);
-
-            Text(`\udb80\udfdc ${ScheduleSources.commonClassTime[course.timeSpan[0]][0]}~${ScheduleSources.commonClassTime[course.timeSpan[course.timeSpan.length - 1]][1]}`)
-              .maxLines(1)
-              .fontSize(13)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
-          .width('50%')
-          .alignItems(HorizontalAlign.Start);
+            .fontSize(11)
+            .textAlign(TextAlign.Center)
+            .opacity(0.7)
+            .margin({ top: 6 })
         }
         .width('100%')
-        .justifyContent(FlexAlign.Start)
-        .margin({ top: 7, bottom: 7 });
-
-        if (index < this.todayCourse.length - 1) {
-          Divider()
-            .width('90%');
-        }
-      });
+        .alignItems(HorizontalAlign.Center)
+        .margin({ top: 12 })
+      } else {
+        ForEach(this.todayCourse, (course: ScheduleSources.classAttribute) => {
+          this.courseItem(course)
+        })
+      }
     }
+    .layoutWeight(1)
+    .alignItems(HorizontalAlign.Start)
+  }
 
-    if (this.tomorrowCourse.length > 0) {
+  @Builder
+  tomorrowColumn() {
+    Column() {
+      Text($r('app.string.tomorrow_label'))
+        .fontSize(12)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.pink'))
+        .maxLines(1)
+        // .margin({ bottom: 4 })
 
-      ListItem() {
-        Row() {
-          Text($r('app.string.tomorrow_class'))
-            .fontSize(12)
-            .margin({ right: 5 })
-            .fontColor($r('app.color.pink'))
+      ForEach(this.tomorrowCourse, (course: ScheduleSources.classAttribute) => {
+        this.courseItem(course)
+      })
+    }
+    .layoutWeight(1)
+    .alignItems(HorizontalAlign.Start)
+  }
 
-          Divider()
+  @Builder
+  cardListBuilder() {
+    ListItem() {
+      Row() {
+        this.todayColumn()
+
+        if (this.tomorrowCourse.length > 0) {
+          this.tomorrowColumn()
         }
       }
       .width('100%')
-      .margin({ left: 5 })
-
-      ForEach(this.tomorrowCourse, (course: ScheduleSources.classAttribute, index) => {
-        if (index > 0) {
-          Divider()
-            .width('90%');
-        }
-        Row() {
-          Column() {
-            Text(course.name)
-              .textAlign(TextAlign.Start)
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .maxLines(2)
-              .textOverflow({ overflow: TextOverflow.Ellipsis });
-          }
-          .width('50%')
-          .alignItems(HorizontalAlign.Start)
-          .padding({ right: 10 });
-
-          Column() {
-            Text(`\udb81\uddf3 ${course.teacher}`)
-              .maxLines(1)
-              .fontSize(13)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .visibility(course.teacher == '' ? Visibility.None : Visibility.Visible);
-
-            Text(`\udb80\uddb8 ${course.location}`)
-              .maxLines(1)
-              .fontSize(13)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .visibility(course.location == '' ? Visibility.None : Visibility.Visible);
-
-            Text(`\udb80\udfdc ${ScheduleSources.commonClassTime[course.timeSpan[0]][0]}~${ScheduleSources.commonClassTime[course.timeSpan[course.timeSpan.length - 1]][1]}`)
-              .maxLines(1)
-              .fontSize(13)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
-          .width('50%')
-          .alignItems(HorizontalAlign.Start);
-        }
-        .width('90%')
-        .margin({ top: 7, bottom: 7 })
-      });
+      .alignItems(VerticalAlign.Top)
     }
+    .width('100%')
   }
 
   build() {

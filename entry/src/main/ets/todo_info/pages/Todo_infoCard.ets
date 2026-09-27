@@ -67,13 +67,7 @@ struct Todo_infoCard {
                 color: Color.Gray
               })
 
-            if (item.timeDesc !== '') {
-              Text(item.timeDesc)
-                .fontSize(12)
-                .fontColor(item.overdue ? $r('app.color.minute') : $r('app.color.transparent_text'))
-            }
-
-            if (item.priority > 0 || item.isAssignment) {
+            if (item.priority > 0 || item.isAssignment || item.timeDesc !== '') {
               Row({ space: 5 }) {
                 if (item.priority > 0) {
                   Text(`重要度 ${item.priority}`)
@@ -91,17 +85,20 @@ struct Todo_infoCard {
                     .fontColor(Color.White)
                     .backgroundColor($r('app.color.hour'))
                 }
+                Text(item.timeDesc)
+                  .fontSize(12)
+                  .fontColor(item.overdue ? $r('app.color.minute') : $r('app.color.transparent_text'))
               }
             }
           }
           .alignItems(HorizontalAlign.Start)
           .layoutWeight(1)
         }
-        .width('100%')
+        .width('98%')
         .margin({ top: 7, bottom: 7 })
 
         if (index < this.todoList.length - 1) {
-          Divider().width('95%');
+          Divider().width('98%');
         }
       })
     }

@@ -332,9 +332,6 @@ struct TodoPage {
   }
 
   saveDraft(): void {
-    if (this.draftText.trim() === '') {
-      return;
-    }
     this.normalizeDraftTimes();
     const newItem = this.buildDraftItem();
     if (this.editingIndex >= 0) {

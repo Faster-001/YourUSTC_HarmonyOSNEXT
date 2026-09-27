@@ -559,7 +559,7 @@ struct Index {
                     Column() {
                       Text(course.name)
                         .textAlign(TextAlign.Start)
-                        .fontSize(18)
+                        .fontSize(17)
                         .fontWeight(FontWeight.Bold)
                         .maxLines(2)
                         .textOverflow({ overflow: TextOverflow.Ellipsis });
@@ -571,6 +571,7 @@ struct Index {
                         Text($r('app.string.class_soon',
                           Math.ceil((this.todayBeginTime +
                             ScheduleSources.commonClassStamp[course.timeSpan[0]][0] - this.currentTime.getTime()) / 60000)))
+                          .fontSize(14)
                           .fontColor($r('app.color.green'));
                       } else if (this.currentTime.getTime() >
                         this.todayBeginTime + ScheduleSources.commonClassStamp[course.timeSpan[0]][0] &&
@@ -587,27 +588,30 @@ struct Index {
                           .fontColor($r('app.color.green'));
                       }
                     }
-                    .width('45%')
+                    .width('50%')
                     .alignItems(HorizontalAlign.Start)
                     .padding({ right: 10 });
 
                     Column() {
                       Text(`\udb81\uddf3 ${course.teacher}`)
+                        .fontSize(14)
                         .maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis })
                         .visibility(course.teacher === '' ? Visibility.None : Visibility.Visible);
 
                       Text(`\udb80\uddb8 ${course.location}`)
+                        .fontSize(14)
                         .maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis })
                         .visibility(course.location === '' ? Visibility.None : Visibility.Visible);
 
                       Text(`\udb80\udfdc ${ScheduleSources.commonClassTime[course.timeSpan[0]][0]}~${ScheduleSources.commonClassTime[course.timeSpan[course.timeSpan.length -
                         1]][1]}`)
+                        .fontSize(14)
                         .maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis });
                     }
-                    .width('48%')
+                    .width('40%')
                     .alignItems(HorizontalAlign.Start);
                   }
                   .width('100%')
@@ -650,31 +654,34 @@ struct Index {
                   Column() {
                     Text(course.name)
                       .textAlign(TextAlign.Start)
-                      .fontSize(18)
+                      .fontSize(17)
                       .fontWeight(FontWeight.Bold)
                       .maxLines(2)
                       .textOverflow({ overflow: TextOverflow.Ellipsis });
                   }
-                  .width('50%')
+                  .width('55%')
                   .alignItems(HorizontalAlign.Start)
                   .padding({ right: 10 });
 
                   Column() {
                     Text(`\udb81\uddf3 ${course.teacher}`)
+                      .fontSize(14)
                       .maxLines(1)
                       .textOverflow({ overflow: TextOverflow.Ellipsis })
                       .visibility(course.teacher === '' ? Visibility.None : Visibility.Visible);
 
                     Text(`\udb80\uddb8 ${course.location}`)
+                      .fontSize(14)
                       .maxLines(1)
                       .textOverflow({ overflow: TextOverflow.Ellipsis })
                       .visibility(course.location === '' ? Visibility.None : Visibility.Visible);
 
                     Text(`\udb80\udfdc ${ScheduleSources.commonClassTime[course.timeSpan[0]][0]}~${ScheduleSources.commonClassTime[course.timeSpan[course.timeSpan.length - 1]][1]}`)
+                      .fontSize(14)
                       .maxLines(1)
                       .textOverflow({ overflow: TextOverflow.Ellipsis })
                   }
-                  .width('50%')
+                  .width('45%')
                   .alignItems(HorizontalAlign.Start);
                 }
                 .width('90%')
