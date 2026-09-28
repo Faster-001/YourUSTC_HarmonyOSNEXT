@@ -106,9 +106,10 @@ export default class EntryFormAbility extends FormExtensionAbility {
   onAddForm(want: Want) {
     // Called to return a FormBindingData object.
     UnifiedPreferences.init(this.context);
-    ScheduleStorage.init(this.context);
-    ExamStorage.init(this.context);
-    TodoStorage.init(this.context);
+    // 服务卡片运行在独立进程，必须强制重新读盘，避免使用陈旧内存缓存
+    ScheduleStorage.init(this.context, true);
+    ExamStorage.init(this.context, true);
+    TodoStorage.init(this.context, true);
     // console.log(JSON.stringify(want.parameters))
 
     const formName: string = want.parameters![formInfo.FormParam.NAME_KEY].toString();
@@ -133,9 +134,10 @@ export default class EntryFormAbility extends FormExtensionAbility {
     */
     // Called to notify the form provider to update a specified form.
     UnifiedPreferences.init(this.context);
-    ScheduleStorage.init(this.context);
-    ExamStorage.init(this.context);
-    TodoStorage.init(this.context);
+    // 服务卡片运行在独立进程，必须强制重新读盘，避免使用陈旧内存缓存
+    ScheduleStorage.init(this.context, true);
+    ExamStorage.init(this.context, true);
+    TodoStorage.init(this.context, true);
     const formType: number = UnifiedPreferences.getNumberSync('CardType_id' + formId, -1);
 
     if (formType !== -1) {
@@ -154,9 +156,10 @@ export default class EntryFormAbility extends FormExtensionAbility {
     hilog.info(DOMAIN_NUMBER, TAG, `FormAbility onFormEvent, formId = ${formId}, message: ${JSON.stringify(message)}`);
 
     UnifiedPreferences.init(this.context);
-    ScheduleStorage.init(this.context);
-    ExamStorage.init(this.context);
-    TodoStorage.init(this.context);
+    // 服务卡片运行在独立进程，必须强制重新读盘，避免使用陈旧内存缓存
+    ScheduleStorage.init(this.context, true);
+    ExamStorage.init(this.context, true);
+    TodoStorage.init(this.context, true);
     const eventSource: string = JSON.parse(message).msgTest;
     const refreshType: number = eventSource === 'schedule' ? 0 : (eventSource === 'todo' ? 2 : 1);
     let formData = new FormDataClass(refreshType);
@@ -171,8 +174,8 @@ export default class EntryFormAbility extends FormExtensionAbility {
 
   onRemoveForm(formId: string) {
     UnifiedPreferences.init(this.context);
-    ScheduleStorage.init(this.context);
-    ExamStorage.init(this.context);
+    ScheduleStorage.init(this.context, true);
+    ExamStorage.init(this.context, true);
     UnifiedPreferences.deleteSync('CardType_id' + formId);
     // Called to notify the form provider that a specified form has been destroyed.
   }

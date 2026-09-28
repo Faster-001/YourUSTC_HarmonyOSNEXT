@@ -13,10 +13,15 @@ let fileReady: boolean = false;
 /**
  * 初始化 ScheduleStorage。必须在任何读写操作之前调用一次（EntryAbility.onCreate 中调用）。
  * @param context 应用上下文
+ * @param forceReload 是否强制丢弃内存缓存并重新从文件读取。用于服务卡片等独立进程，
+ *                    避免因进程内缓存陈旧而读到旧数据、并在回写时覆盖其他进程的最新保存。
  */
-export function init(context: Context): void {
+export function init(context: Context, forceReload: boolean = false): void {
   scheduleFilePath = `${context.filesDir}/scheduleData.json`;
   fileReady = true;
+  if (forceReload) {
+    scheduleCache = null;
+  }
   loadSchedule();
 }
 
@@ -58,6 +63,7 @@ export function getDefaultSemester(): number {
 
 export function setDefaultSemester(index: number): void {
   const data = loadSchedule();
+  if (data.defaultSemester === index) return; // 值未变，不写盘
   data.defaultSemester = index;
   scheduleCache = data;
   flushSchedule();
