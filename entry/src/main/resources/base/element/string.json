@@ -1183,6 +1183,10 @@
     {
       "name": "submit_channel",
       "value": "提交渠道"
+    },
+    {
+      "name": "search_function_placeholder",
+      "value": "搜索：名称 / 链接 / 别名"
     }
   ]
 }

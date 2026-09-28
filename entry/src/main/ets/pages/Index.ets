@@ -26,6 +26,7 @@ import { currentAppVersion, initHostContext, deviceType, hostContext } from '../
 import { hdsMaterial, HdsTabs, HdsTabsController } from '@kit.UIDesignKit'
 import accountInfoProvider from '../utils/Encryption'
 import { LinkSet, LINK, SimpleLink, MultiLink } from '../constants/Links'
+import { SearchResultItem, doSearch, SearchResultComponent } from '../view/FunctionSearch'
 // import { SplitPlaceholder } from '../view/SplitPlaceholder'
 
 // 滚动条参数
@@ -230,6 +231,13 @@ struct Index {
   }
 
   @State copyMostUsedFunc: MultiLink[] = FunctionOrder.mostUsedFunc;
+
+  /**
+   * 全局资源: 功能搜索
+   * 拼音与别名字段定义在 constants/Links.ets 的 MultiLink（pinyin / alias），数据待补充
+   */
+  @State searchText: string = '';
+  @State searchResults: SearchResultItem[] = [];
 
   /**
    * 全局资源: 设置
@@ -923,61 +931,87 @@ struct Index {
    */
   @Builder pageFunction() {
     Column() {
+      // 搜索框
+      Search({ value: this.searchText, placeholder: $r('app.string.search_function_placeholder') })
+        .width('100%')
+        .height(40)
+        .borderRadius(20)
+        .margin({ bottom: 8 })
+        .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : '#0000')
+        .backgroundBlurStyle(BackgroundImage.blurLevel)
+        .onChange((value: string) => {
+          this.searchText = value;
+          this.searchResults = doSearch(value);
+        })
+
       Scroll(this.scrollerForScroll) {
         Column() {
-          // 常用区 Grid
-          MostRecentComponent({ gridData: this.copyMostUsedFunc, pageInfo: this.pageInfo, copyMostUsedFunc: this.copyMostUsedFunc })
-          // 常用区下面的所有功能区 GridComponent
-          this.listBuilder();
-          List({ scroller: this.scrollerForList }) {
-            ForEach(LINK, (item: LinkSet, index: number) => {
-              GridComponent({
-                gridData: item,
-                gridIndex: index,
-                pageInfo: this.pageInfo,
-                copyMostUsedFunc: this.copyMostUsedFunc
-              })
-            })//, (item: GridData,index:number) => index + JSON.stringify(item))
+          if (this.searchText.trim() !== '') {
+            // 搜索结果
+            SearchResultComponent({
+              searchResults: this.searchResults,
+              pageInfo: this.pageInfo,
+              copyMostUsedFunc: this.copyMostUsedFunc
+            })
 
-            ListItem().height('100%')
+            Blank().height(80)
+          } else {
+            // 常用区 Grid
+            MostRecentComponent({ gridData: this.copyMostUsedFunc, pageInfo: this.pageInfo, copyMostUsedFunc: this.copyMostUsedFunc })
+            // 常用区下面的所有功能区 GridComponent
+            this.listBuilder();
+            List({ scroller: this.scrollerForList }) {
+              ForEach(LINK, (item: LinkSet, index: number) => {
+                GridComponent({
+                  gridData: item,
+                  gridIndex: index,
+                  pageInfo: this.pageInfo,
+                  copyMostUsedFunc: this.copyMostUsedFunc
+                })
+              })//, (item: GridData,index:number) => index + JSON.stringify(item))
+
+              ListItem().height('100%')
+            }
+            // .padding({ bottom: '40vp' })
+            .borderRadius({ topLeft: 20, topRight: 20 })
+            .edgeEffect(EdgeEffect.Spring)
+            .scrollBar(BarState.Off)
+            .onReachStart(() => {
+              this.listPosition = ScrollPosition.start;
+            })
+            .onReachEnd(() => {
+              this.listPosition = ScrollPosition.end;
+            })
+            .onScrollIndex((start: number) => {
+              this.currentListIndex = start
+              this.scrollerForTitle.scrollToIndex(this.currentListIndex);
+            })
+            .onScrollFrameBegin((offset: number) => {
+              if (this.currentListIndex === LINK.length - 1 && offset > 0) {
+                return { offsetRemain: 0 }
+              }
+              if (!((this.listPosition === ScrollPosition.start && offset < 0) ||
+                (this.listPosition === ScrollPosition.end && offset > 0))) {
+                this.listPosition = ScrollPosition.center;
+              }
+              if (this.scrollPosition === ScrollPosition.end &&
+                (this.listPosition != ScrollPosition.start || offset > 0)) {
+                return { offsetRemain: offset };
+              } else {
+                this.scrollerForScroll.scrollBy(0, offset)
+                return { offsetRemain: offset };
+              }
+            })
+            .width('100%')
+            .height("calc(100% - 59vp)") // this.listBuilder的高度：51 + 8 = 59
           }
-          // .padding({ bottom: '40vp' })
-          .borderRadius({ topLeft: 20, topRight: 20 })
-          .edgeEffect(EdgeEffect.Spring)
-          .scrollBar(BarState.Off)
-          .onReachStart(() => {
-            this.listPosition = ScrollPosition.start;
-          })
-          .onReachEnd(() => {
-            this.listPosition = ScrollPosition.end;
-          })
-          .onScrollIndex((start: number) => {
-            this.currentListIndex = start
-            this.scrollerForTitle.scrollToIndex(this.currentListIndex);
-          })
-          .onScrollFrameBegin((offset: number) => {
-            if (this.currentListIndex === LINK.length - 1 && offset > 0) {
-              return { offsetRemain: 0 }
-            }
-            if (!((this.listPosition === ScrollPosition.start && offset < 0) ||
-              (this.listPosition === ScrollPosition.end && offset > 0))) {
-              this.listPosition = ScrollPosition.center;
-            }
-            if (this.scrollPosition === ScrollPosition.end &&
-              (this.listPosition != ScrollPosition.start || offset > 0)) {
-              return { offsetRemain: offset };
-            } else {
-              this.scrollerForScroll.scrollBy(0, offset)
-              return { offsetRemain: offset };
-            }
-          })
-          .width('100%')
-          .height("calc(100% - 59vp)") // this.listBuilder的高度：51 + 8 = 59
         }
       }
+      .align(Alignment.Top)
       .scrollBar(BarState.Off)
+      .borderRadius({ topLeft: 20, topRight: 20 })
       .width('100%')
-      .height('100%')
+      .layoutWeight(1) // 顶部搜索框占位，占满剩余高度
       .edgeEffect(EdgeEffect.None)
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
       .onWillScroll((yOffset: number) => {

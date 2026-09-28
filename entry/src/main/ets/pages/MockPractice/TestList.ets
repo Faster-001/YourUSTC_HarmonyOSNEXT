@@ -62,16 +62,12 @@ struct MockPracticeList {
     {
       value: $r('app.string.join_qq_group'),
       icon: $r('app.media.message_on_message'),
-      action: () => {
-        WantAbility.StartQQ(this.getUIContext().getHostContext() as common.UIAbilityContext);
-      }
+      action: () => WantAbility.StartQQ(this.getUIContext().getHostContext() as common.UIAbilityContext)
     },
     {
       value: 'import',
       icon: $r('app.media.import'),
-      action: () => {
-        this.startImport();
-      }
+      action: () => this.startImport()
     }
   ];
 

@@ -594,6 +594,7 @@ struct ThemeSetting {
         .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
         .width('100%')
       }
+      .edgeEffect(EdgeEffect.Spring)
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
       .width('100%')
     }
